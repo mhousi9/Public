@@ -1,0 +1,2743 @@
+<!DOCTYPE html>
+<html lang="cs">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Osobnosti">
+<meta name="theme-color" content="#020617">
+<link rel="manifest" id="pwa-manifest">
+<title>Osobnosti</title>
+<script src="https://cdn.jsdelivr.net/npm/mammoth@1.6.0/mammoth.browser.min.js"></script>
+<script>
+// ── PWA MANIFEST (inline, dynamically created) ──
+(function(){
+  const manifest = {
+    name: "Osobnosti",
+    short_name: "Osobnosti",
+    description: "Databáze osobností",
+    start_url: "./",
+    display: "standalone",
+    background_color: "#020617",
+    theme_color: "#020617",
+    orientation: "portrait",
+    icons: [
+      { src: "data:image/svg+xml," + encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 192 192"><rect width="192" height="192" rx="40" fill="#1e1b4b"/><text x="96" y="130" font-size="110" text-anchor="middle">👤</text></svg>'), sizes: "192x192", type: "image/svg+xml" },
+      { src: "data:image/svg+xml," + encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><rect width="512" height="512" rx="100" fill="#1e1b4b"/><text x="256" y="350" font-size="290" text-anchor="middle">👤</text></svg>'), sizes: "512x512", type: "image/svg+xml" }
+    ]
+  };
+  const blob = new Blob([JSON.stringify(manifest)], {type:'application/json'});
+  document.getElementById('pwa-manifest').href = 'data:application/json;base64,eyJuYW1lIjogIk9zb2Jub3N0aSIsICJzaG9ydF9uYW1lIjogIk9zb2Jub3N0aSIsICJkZXNjcmlwdGlvbiI6ICJEYXRhYlx1MDBlMXplIG9zb2Jub3N0XHUwMGVkIiwgInN0YXJ0X3VybCI6ICIuLyIsICJkaXNwbGF5IjogInN0YW5kYWxvbmUiLCAiYmFja2dyb3VuZF9jb2xvciI6ICIjMDIwNjE3IiwgInRoZW1lX2NvbG9yIjogIiMwMjA2MTciLCAib3JpZW50YXRpb24iOiAicG9ydHJhaXQiLCAiaWNvbnMiOiBbeyJzcmMiOiAiZGF0YTppbWFnZS9zdmcreG1sLCUzQ3N2ZyUyMHhtbG5zJTNEJTIyaHR0cCUzQSUyRiUyRnd3dy53My5vcmclMkYyMDAwJTJGc3ZnJTIyJTIwdmlld0JveCUzRCUyMjAlMjAwJTIwMTkyJTIwMTkyJTIyJTNFJTNDcmVjdCUyMHdpZHRoJTNEJTIyMTkyJTIyJTIwaGVpZ2h0JTNEJTIyMTkyJTIyJTIwcnglM0QlMjI0MCUyMiUyMGZpbGwlM0QlMjIlMjMxZTFiNGIlMjIlMkYlM0UlM0N0ZXh0JTIweCUzRCUyMjk2JTIyJTIweSUzRCUyMjEzMCUyMiUyMGZvbnQtc2l6ZSUzRCUyMjExMCUyMiUyMHRleHQtYW5jaG9yJTNEJTIybWlkZGxlJTIyJTNFJUYwJTlGJTkxJUE0JTNDJTJGdGV4dCUzRSUzQyUyRnN2ZyUzRSIsICJzaXplcyI6ICIxOTJ4MTkyIiwgInR5cGUiOiAiaW1hZ2Uvc3ZnK3htbCJ9XX0=';
+})();
+
+// ── SERVICE WORKER ──
+if('serviceWorker' in navigator){
+  const swCode = `const CACHE='osobnosti-v1';self.addEventListener('install',e=>e.waitUntil(caches.open(CACHE).then(c=>c.addAll(['./']))));self.addEventListener('activate',e=>e.waitUntil(caches.keys().then(keys=>Promise.all(keys.filter(k=>k!==CACHE).map(k=>caches.delete(k))))));self.addEventListener('fetch',e=>{e.respondWith(caches.match(e.request).then(r=>{if(r)return r;return fetch(e.request).then(resp=>{if(resp&&resp.status===200&&resp.type==='basic'){const cl=resp.clone();caches.open(CACHE).then(c=>c.put(e.request,cl));}return resp;}).catch(()=>caches.match('./'));}))}); `;
+  const swBlob = new Blob([swCode], {type:'application/javascript'});
+  navigator.serviceWorker.register(URL.createObjectURL(swBlob), {scope:'./'}).catch(()=>{});
+}
+
+// ── INSTALL PROMPT ──
+let _installPrompt = null;
+window.addEventListener('beforeinstallprompt', e => {
+  e.preventDefault(); _installPrompt = e;
+  const btn = document.getElementById('install-pwa-btn');
+  if(btn) btn.style.display = '';
+});
+window.addEventListener('appinstalled', () => {
+  const btn = document.getElementById('install-pwa-btn');
+  if(btn) btn.style.display = 'none';
+  _installPrompt = null;
+});
+function triggerInstall(){
+  if(_installPrompt){ _installPrompt.prompt(); _installPrompt.userChoice.then(()=>{_installPrompt=null;}); }
+  else { alert('Instalace:\n• iOS Safari: Sdílet → Přidat na plochu\n• Android Chrome: Menu ⋮ → Přidat na plochu\n• PC Chrome/Edge: Ikona instalace v adresním řádku'); }
+}
+</script>
+<style>
+* { box-sizing: border-box; -webkit-tap-highlight-color: transparent; margin: 0; padding: 0; }
+body { background: #020617; color: #e2e8f0; font-family: 'Segoe UI', system-ui, sans-serif; max-width: 480px; margin: 0 auto; min-height: 100vh; overflow-x: hidden; }
+input, textarea, button, select { font-family: inherit; }
+input, select { color-scheme: dark; }
+::-webkit-scrollbar { width: 4px; }
+::-webkit-scrollbar-track { background: #020617; }
+::-webkit-scrollbar-thumb { background: #1e293b; border-radius: 4px; }
+
+/* ── HEADER ── */
+.header { background: linear-gradient(135deg, #0f172a 0%, #1e1b4b 100%); padding: 48px 20px 12px; border-bottom: 1px solid #1e293b; position: sticky; top: 0; z-index: 100; }
+.header-row { display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; }
+.header-label { font-size: 10px; letter-spacing: 3px; color: #38bdf8; font-weight: 700; text-transform: uppercase; font-family: monospace; }
+.header-title { font-size: 22px; font-weight: 800; line-height: 1.1; }
+.count-badge { background: #1e293b; color: #64748b; border-radius: 20px; padding: 3px 10px; font-size: 12px; font-weight: 600; }
+
+/* ── SEARCH / FILTER ── */
+.search-row { display: flex; gap: 8px; margin-bottom: 8px; }
+.search-input { flex: 1; background: #0f172a; border: 1px solid #1e293b; border-radius: 10px; padding: 9px 12px; color: #e2e8f0; font-size: 14px; outline: none; }
+.search-input:focus { border-color: #38bdf8; }
+.search-input::placeholder { color: #334155; }
+.filter-btn { background: #0f172a; border: 1px solid #1e293b; border-radius: 10px; padding: 9px 12px; color: #94a3b8; font-size: 13px; font-weight: 600; cursor: pointer; white-space: nowrap; display: flex; align-items: center; gap: 5px; }
+.filter-btn.active { border-color: #38bdf8; color: #38bdf8; }
+.n-badge { background: #38bdf8; color: #020617; border-radius: 10px; padding: 1px 6px; font-size: 11px; font-weight: 800; }
+.sort-row { display: flex; gap: 6px; overflow-x: auto; padding-bottom: 4px; scrollbar-width: none; }
+.sort-row::-webkit-scrollbar { display: none; }
+.chip { background: #0f172a; border: 1px solid #1e293b; border-radius: 20px; padding: 5px 12px; font-size: 12px; font-weight: 600; color: #64748b; cursor: pointer; white-space: nowrap; flex-shrink: 0; transition: all 0.15s; }
+.chip.active { background: #1e3a5f; border-color: #38bdf8; color: #38bdf8; }
+.chip:active { transform: scale(0.95); }
+
+/* ── FILTER PANEL ── */
+.filter-panel { background: #0a0f1e; border-bottom: 1px solid #1e293b; overflow: hidden; max-height: 0; transition: max-height 0.3s ease; }
+.filter-panel.open { max-height: 500px; }
+.filter-inner { padding: 14px 20px; }
+.filter-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 10px; }
+.filter-group label { display: block; font-size: 10px; color: #64748b; font-weight: 700; letter-spacing: 1px; text-transform: uppercase; font-family: monospace; margin-bottom: 5px; }
+.filter-input { width: 100%; background: #0f172a; border: 1px solid #1e293b; border-radius: 8px; padding: 8px 10px; color: #e2e8f0; font-size: 13px; outline: none; }
+.filter-input:focus { border-color: #38bdf8; }
+.filter-input::placeholder { color: #334155; }
+select.filter-input option { background: #0f172a; }
+.best-filter-row { display: flex; align-items: center; gap: 10px; margin-bottom: 10px; }
+.best-filter-row label { font-size: 12px; color: #94a3b8; font-weight: 600; flex-shrink: 0; }
+.tc { background: #0f172a; border: 1px solid #1e293b; border-radius: 8px; padding: 5px 12px; font-size: 12px; font-weight: 600; color: #64748b; cursor: pointer; transition: all 0.15s; }
+.tc.ay { background: #0c2a1a; border-color: #22c55e; color: #22c55e; }
+.tc.an { background: #1a0a0a; border-color: #ef4444; color: #ef4444; }
+.tc.aa { background: #1e293b; border-color: #475569; color: #94a3b8; }
+
+/* ── BUTTONS ── */
+.btn { padding: 10px 18px; border-radius: 10px; border: none; cursor: pointer; font-weight: 700; font-size: 14px; transition: all 0.15s; display: inline-flex; align-items: center; gap: 6px; }
+.btn-primary { background: #38bdf8; color: #020617; }
+.btn-primary:active { background: #0ea5e9; transform: scale(0.97); }
+.btn-secondary { background: #1e293b; color: #e2e8f0; }
+.btn-ghost { background: transparent; color: #94a3b8; border: 1px solid #1e293b; }
+.btn-ghost:active { background: #1e293b; }
+.btn-danger { background: #ef4444; color: #fff; }
+.btn-sm { padding: 6px 14px; font-size: 12px; border-radius: 8px; }
+.btn-full { width: 100%; justify-content: center; padding: 14px; font-size: 16px; }
+
+/* ── LIST ── */
+.list-item { display: flex; align-items: center; gap: 14px; padding: 14px 20px; border-bottom: 1px solid #0f172a; cursor: pointer; transition: background 0.15s; background: #020617; }
+.list-item:active { background: #0f172a; }
+.list-info { flex: 1; min-width: 0; }
+.list-name { font-weight: 700; font-size: 15px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.list-alias { font-size: 12px; color: #64748b; margin-top: 1px; }
+.list-meta { display: flex; align-items: center; gap: 6px; margin-top: 4px; flex-wrap: wrap; }
+.list-arrow { color: #334155; font-size: 20px; flex-shrink: 0; }
+.best-badge { background: linear-gradient(135deg, #92400e, #d97706); color: #fef3c7; font-size: 10px; font-weight: 800; letter-spacing: 0.5px; padding: 2px 7px; border-radius: 4px; text-transform: uppercase; flex-shrink: 0; }
+
+/* ── AVATAR ── */
+.avatar { border-radius: 50%; object-fit: cover; border: 2px solid #1e293b; flex-shrink: 0; }
+.avatar-placeholder { border-radius: 50%; display: flex; align-items: center; justify-content: center; font-weight: 800; flex-shrink: 0; border: 2px solid #1e293b; background: linear-gradient(135deg, #1e3a5f, #4f46e5); }
+
+/* ── STARS ── */
+.stars { display: flex; gap: 2px; }
+.star { cursor: pointer; user-select: none; transition: transform 0.1s; }
+.star:active { transform: scale(1.3); }
+
+/* ── EMPTY ── */
+.empty { text-align: center; padding: 80px 20px; color: #334155; }
+.empty-icon { font-size: 52px; margin-bottom: 12px; }
+.empty-title { font-size: 16px; font-weight: 600; color: #475569; }
+.empty-sub { font-size: 13px; margin-top: 6px; }
+
+/* ── VIEWS ── */
+.view { display: none; }
+.view.active { display: block; }
+
+/* ── DETAIL ── */
+.detail-hero { background: linear-gradient(180deg, #1e1b4b 0%, #020617 100%); padding: 0 0 24px; }
+.detail-hero-nav { display: flex; justify-content: space-between; padding: 16px 16px 0; }
+.detail-center { text-align: center; padding: 20px 20px 0; }
+.detail-name { font-size: 26px; font-weight: 800; margin: 14px 0 4px; }
+.detail-alias { color: #38bdf8; font-size: 14px; font-style: italic; margin-bottom: 8px; }
+.detail-body { padding: 0 20px 60px; }
+.tag { display: inline-block; background: #1e293b; border-radius: 6px; padding: 3px 10px; font-size: 12px; color: #94a3b8; margin-right: 6px; margin-bottom: 4px; }
+.tag-blue { color: #38bdf8; border-left: 2px solid #38bdf8; }
+.tag-gold { background: linear-gradient(135deg, #92400e, #78350f); color: #fef3c7; border: none; font-weight: 700; }
+.tags-row { margin-bottom: 20px; }
+.info-card { background: #0f172a; border-radius: 14px; padding: 16px; margin-bottom: 16px; border: 1px solid #1e293b; }
+.info-row { display: flex; justify-content: space-between; align-items: center; padding: 8px 0; border-bottom: 1px solid #1e293b; }
+.info-row:last-child { border-bottom: none; padding-bottom: 0; }
+.info-label { font-size: 11px; color: #64748b; font-weight: 700; text-transform: uppercase; letter-spacing: 0.8px; font-family: monospace; }
+.info-value { font-size: 14px; font-weight: 600; text-align: right; max-width: 65%; }
+.info-section-title { font-size: 11px; color: #64748b; font-weight: 700; letter-spacing: 1.5px; text-transform: uppercase; margin-bottom: 10px; font-family: monospace; }
+.info-text { font-size: 14px; line-height: 1.6; color: #cbd5e1; }
+.delete-confirm { background: #1a0a0a; border: 1px solid #7f1d1d; border-radius: 14px; padding: 16px; text-align: center; }
+.delete-confirm-text { font-weight: 700; margin-bottom: 12px; color: #fca5a5; }
+.delete-confirm-btns { display: flex; gap: 10px; justify-content: center; }
+
+/* ── PHOTO GALLERY (DETAIL) ── */
+.gallery-section { margin-bottom: 16px; }
+.gallery-main { position: relative; width: 100%; max-height: 70vh; min-height: 200px; border-radius: 14px; overflow: hidden; background: #0a0a0a; border: 1px solid #1e293b; margin-bottom: 8px; cursor: zoom-in; display: flex; align-items: center; justify-content: center; }
+.gallery-main img { max-width: 100%; max-height: 70vh; width: auto; height: auto; object-fit: contain; transition: transform 0.2s; display: block; }
+.gallery-main:active img { transform: scale(1.03); }
+.gallery-main-placeholder { width: 100%; height: 100%; display: flex; align-items: center; justify-content: center; font-size: 64px; }
+.gallery-counter { position: absolute; bottom: 8px; right: 10px; background: rgba(0,0,0,.65); color: #e2e8f0; font-size: 11px; font-weight: 700; border-radius: 10px; padding: 3px 9px; font-family: monospace; }
+.gallery-nav { position: absolute; top: 50%; transform: translateY(-50%); background: rgba(0,0,0,.55); border: none; color: #fff; font-size: 20px; padding: 8px 12px; cursor: pointer; border-radius: 8px; line-height: 1; }
+.gallery-nav-l { left: 6px; }
+.gallery-nav-r { right: 6px; }
+.gallery-thumbs { display: flex; gap: 6px; overflow-x: auto; scrollbar-width: none; padding-bottom: 2px; }
+.gallery-thumbs::-webkit-scrollbar { display: none; }
+.gallery-thumb { width: 58px; height: 58px; border-radius: 8px; object-fit: cover; border: 2px solid transparent; cursor: pointer; flex-shrink: 0; transition: border-color 0.15s; }
+.gallery-thumb.active { border-color: #38bdf8; }
+
+/* ── LIGHTBOX ── */
+.lightbox { display: none; position: fixed; inset: 0; background: rgba(0,0,0,.92); z-index: 999; align-items: center; justify-content: center; }
+.lightbox.open { display: flex; }
+.lightbox img { max-width: 96vw; max-height: 90vh; object-fit: contain; border-radius: 8px; }
+.lightbox-close { position: absolute; top: 16px; right: 16px; background: rgba(255,255,255,.15); border: none; color: #fff; font-size: 24px; width: 44px; height: 44px; border-radius: 50%; cursor: pointer; display: flex; align-items: center; justify-content: center; }
+.lightbox-nav { position: absolute; top: 50%; transform: translateY(-50%); background: rgba(255,255,255,.15); border: none; color: #fff; font-size: 28px; padding: 12px 16px; cursor: pointer; border-radius: 8px; line-height: 1; }
+.lightbox-nav-l { left: 10px; }
+.lightbox-nav-r { right: 10px; }
+
+/* ── PHOTO EDITOR MODAL ── */
+#photo-editor-modal {
+  display: none; position: fixed; inset: 0; z-index: 10000;
+  background: #000;
+  flex-direction: column;
+}
+#photo-editor-modal.open { display: flex; }
+.pe-header {
+  background: #0a0f1e; border-bottom: 1px solid #1e293b;
+  padding: 12px 16px; flex-shrink: 0;
+}
+.pe-header-row { display: flex; align-items: center; justify-content: space-between; margin-bottom: 4px; }
+.pe-title { font-size: 15px; font-weight: 800; color: #e2e8f0; }
+.pe-hint { font-size: 11px; color: #64748b; }
+/* The draggable area */
+#pe-stage {
+  flex: 1; overflow: hidden; position: relative;
+  background: #111; cursor: grab; touch-action: none;
+  display: flex; align-items: center; justify-content: center;
+}
+#pe-stage:active { cursor: grabbing; }
+/* The image inside the stage */
+#pe-photo {
+  position: absolute;
+  transform-origin: 0 0;
+  pointer-events: none;
+  user-select: none;
+  -webkit-user-select: none;
+  will-change: transform;
+}
+/* Crosshair overlay */
+#pe-overlay {
+  position: absolute; inset: 0; pointer-events: none;
+}
+.pe-bottom {
+  background: #0a0f1e; border-top: 1px solid #1e293b;
+  padding: 10px 16px 24px; flex-shrink: 0;
+}
+.pe-preview-row {
+  display: flex; align-items: center; gap: 14px; margin-bottom: 10px;
+}
+.pe-prev-c {
+  width: 56px; height: 56px; border-radius: 50%;
+  overflow: hidden; border: 2px solid #38bdf8; flex-shrink: 0; position: relative;
+}
+.pe-prev-s {
+  width: 56px; height: 56px; border-radius: 10px;
+  overflow: hidden; border: 2px solid #334155; flex-shrink: 0; position: relative;
+}
+.pe-prev-c img, .pe-prev-s img {
+  position: absolute; pointer-events: none;
+  transform-origin: 0 0;
+}
+.pe-preview-info { flex: 1; font-size: 11px; color: #64748b; line-height: 1.6; }
+.pe-zoom-row {
+  display: flex; align-items: center; gap: 10px; margin-bottom: 10px;
+}
+.pe-zoom-row span { font-size: 11px; color: #64748b; width: 36px; text-align: right; flex-shrink: 0; }
+.pe-zoom-slider {
+  flex: 1; -webkit-appearance: none; appearance: none;
+  height: 4px; border-radius: 4px;
+  background: #1e293b; outline: none; cursor: pointer;
+}
+.pe-zoom-slider::-webkit-slider-thumb {
+  -webkit-appearance: none; width: 22px; height: 22px;
+  border-radius: 50%; background: #38bdf8; cursor: pointer;
+  border: 2px solid #fff;
+}
+.pe-actions { display: flex; gap: 10px; }
+
+/* ── LINKS (DETAIL) ── */
+.links-section { margin-bottom: 16px; }
+.link-item { display: flex; align-items: center; gap: 10px; background: #0f172a; border-radius: 12px; padding: 12px 14px; margin-bottom: 8px; border: 1px solid #1e293b; text-decoration: none; color: #38bdf8; transition: border-color 0.15s; }
+.link-item:active { border-color: #38bdf8; background: #1e293b; }
+.link-icon { font-size: 18px; flex-shrink: 0; }
+.link-text { flex: 1; min-width: 0; }
+.link-label-text { font-size: 13px; font-weight: 700; color: #e2e8f0; margin-bottom: 2px; }
+.link-url-text { font-size: 12px; color: #64748b; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+/* ── FORM ── */
+.form-header { background: linear-gradient(135deg, #0f172a 0%, #1e1b4b 100%); padding: 48px 20px 14px; border-bottom: 1px solid #1e293b; position: sticky; top: 0; z-index: 100; }
+.form-header-row { display: flex; justify-content: space-between; align-items: center; }
+.form-header-title { font-size: 16px; font-weight: 800; }
+.form-body { padding: 20px; }
+.form-group { margin-bottom: 16px; }
+.form-label { display: block; font-size: 11px; font-weight: 700; letter-spacing: 1.5px; color: #64748b; margin-bottom: 6px; text-transform: uppercase; font-family: monospace; }
+.form-input { width: 100%; background: #0f172a; border: 1px solid #1e293b; border-radius: 8px; padding: 10px 12px; color: #e2e8f0; font-size: 15px; outline: none; transition: border-color 0.2s; }
+.form-input:focus { border-color: #38bdf8; }
+.form-input::placeholder { color: #475569; }
+textarea.form-input { resize: vertical; }
+
+/* ── MULTI-PHOTO FORM ── */
+.photos-list { display: flex; flex-direction: column; gap: 10px; margin-bottom: 10px; }
+.photo-item { display: flex; align-items: center; gap: 10px; background: #0f172a; border: 1px solid #1e293b; border-radius: 10px; padding: 8px 10px; }
+.photo-item-thumb { width: 52px; height: 52px; border-radius: 8px; object-fit: cover; flex-shrink: 0; }
+.photo-item-placeholder { width: 52px; height: 52px; border-radius: 8px; background: #1e293b; display: flex; align-items: center; justify-content: center; font-size: 22px; flex-shrink: 0; }
+.photo-item-info { flex: 1; min-width: 0; }
+.photo-item-name { font-size: 12px; color: #94a3b8; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.photo-item-main { font-size: 10px; color: #38bdf8; font-weight: 700; margin-top: 2px; }
+.photo-item-del { background: transparent; border: none; color: #ef4444; font-size: 18px; cursor: pointer; padding: 4px; flex-shrink: 0; }
+.photo-item-star { background: transparent; border: none; color: #64748b; font-size: 16px; cursor: pointer; padding: 4px; flex-shrink: 0; }
+.photo-item-star.main { color: #f59e0b; }
+.photo-add-row { display: flex; gap: 8px; }
+.photo-add-btn { flex: 1; display: flex; align-items: center; gap: 6px; background: #1e293b; color: #e2e8f0; border-radius: 10px; padding: 10px 12px; font-weight: 600; font-size: 13px; cursor: pointer; justify-content: center; border: 1px dashed #334155; transition: border-color 0.15s; }
+.photo-add-btn:active { background: #334155; }
+
+/* ── MULTI-LINKS FORM ── */
+.links-list { display: flex; flex-direction: column; gap: 8px; margin-bottom: 10px; }
+.link-form-item { background: #0f172a; border: 1px solid #1e293b; border-radius: 10px; padding: 10px 12px; }
+.link-form-row { display: flex; gap: 8px; align-items: center; margin-bottom: 6px; }
+.link-form-row:last-child { margin-bottom: 0; }
+.link-form-input { flex: 1; background: #0a0f1e; border: 1px solid #1e293b; border-radius: 7px; padding: 7px 10px; color: #e2e8f0; font-size: 13px; outline: none; }
+.link-form-input:focus { border-color: #38bdf8; }
+.link-form-input::placeholder { color: #475569; }
+.link-del-btn { background: transparent; border: none; color: #ef4444; font-size: 18px; cursor: pointer; padding: 2px 4px; flex-shrink: 0; }
+.add-link-btn { display: flex; align-items: center; gap: 6px; background: #1e293b; color: #e2e8f0; border-radius: 10px; padding: 10px 14px; font-weight: 600; font-size: 13px; cursor: pointer; justify-content: center; border: 1px dashed #334155; width: 100%; transition: border-color 0.15s; }
+.add-link-btn:active { background: #334155; }
+
+/* ── BEST TOGGLE ── */
+.best-toggle-row { display: flex; align-items: center; justify-content: space-between; background: #0f172a; border: 1px solid #1e293b; border-radius: 10px; padding: 12px 16px; }
+.best-toggle-label { font-size: 14px; font-weight: 600; }
+.best-toggle-label small { display: block; font-size: 11px; color: #64748b; font-weight: 400; margin-top: 2px; }
+.toggle-switch { position: relative; width: 48px; height: 26px; flex-shrink: 0; }
+.toggle-switch input { opacity: 0; width: 0; height: 0; }
+.toggle-slider { position: absolute; inset: 0; background: #1e293b; border-radius: 26px; cursor: pointer; transition: 0.2s; }
+.toggle-slider:before { content: ''; position: absolute; width: 20px; height: 20px; left: 3px; top: 3px; background: #64748b; border-radius: 50%; transition: 0.2s; }
+input:checked + .toggle-slider { background: #d97706; }
+input:checked + .toggle-slider:before { transform: translateX(22px); background: #fff; }
+
+.spacer { height: 40px; }
+/* ── LOCK SCREEN ── */
+#lock-screen {
+  display: none; position: fixed; inset: 0; z-index: 9999;
+  background: linear-gradient(160deg, #020617 0%, #0f172a 50%, #1e1b4b 100%);
+  flex-direction: column; align-items: center; justify-content: center;
+  padding: 40px 30px;
+}
+#lock-screen.visible { display: flex; }
+.lock-app-icon { width: 80px; height: 80px; border-radius: 20px; background: linear-gradient(135deg,#1e3a5f,#4f46e5); display: flex; align-items: center; justify-content: center; font-size: 40px; margin-bottom: 16px; border: 2px solid rgba(56,189,248,0.3); box-shadow: 0 0 40px rgba(56,189,248,0.15); overflow: hidden; }
+.lock-app-icon img { width: 100%; height: 100%; object-fit: cover; }
+.lock-app-name { font-size: 24px; font-weight: 800; color: #e2e8f0; margin-bottom: 6px; text-align: center; }
+.lock-subtitle { font-size: 13px; color: #64748b; margin-bottom: 40px; text-align: center; }
+.pin-dots { display: flex; gap: 16px; margin-bottom: 32px; }
+.pin-dot { width: 16px; height: 16px; border-radius: 50%; border: 2px solid #334155; background: transparent; transition: all 0.15s; }
+.pin-dot.filled { background: #38bdf8; border-color: #38bdf8; transform: scale(1.1); }
+.pin-dot.error { background: #ef4444; border-color: #ef4444; animation: shake 0.4s ease; }
+@keyframes shake { 0%,100%{transform:translateX(0)} 20%,60%{transform:translateX(-6px)} 40%,80%{transform:translateX(6px)} }
+.pin-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; width: 100%; max-width: 280px; }
+.pin-key { aspect-ratio: 1; border-radius: 50%; background: rgba(255,255,255,0.05); border: 1px solid #1e293b; color: #e2e8f0; font-size: 22px; font-weight: 700; cursor: pointer; display: flex; align-items: center; justify-content: center; flex-direction: column; transition: all 0.1s; user-select: none; -webkit-user-select: none; }
+.pin-key:active { background: rgba(56,189,248,0.2); border-color: #38bdf8; transform: scale(0.93); }
+.pin-key .pin-key-letters { font-size: 9px; color: #475569; font-weight: 600; letter-spacing: 1px; margin-top: 2px; }
+.pin-key-action { background: transparent; border: none; font-size: 20px; }
+.lock-wrong-msg { color: #ef4444; font-size: 13px; font-weight: 600; margin-top: 12px; opacity: 0; transition: opacity 0.2s; }
+.lock-wrong-msg.visible { opacity: 1; }
+.lock-setup { display: none; flex-direction: column; align-items: center; width: 100%; }
+.lock-setup.visible { display: flex; }
+.lock-main { display: flex; flex-direction: column; align-items: center; width: 100%; }
+.lock-main.hidden { display: none; }
+
+/* ── SETTINGS VIEW ── */
+.settings-header { background: linear-gradient(135deg, #0f172a 0%, #1e1b4b 100%); padding: 48px 20px 14px; border-bottom: 1px solid #1e293b; position: sticky; top: 0; z-index: 100; }
+.settings-body { padding: 20px; }
+.settings-section-title { font-size: 10px; font-weight: 700; letter-spacing: 2px; color: #38bdf8; text-transform: uppercase; font-family: monospace; margin: 20px 0 10px; }
+.settings-section-title:first-child { margin-top: 0; }
+.icon-grid { display: grid; grid-template-columns: repeat(5, 1fr); gap: 10px; margin-bottom: 6px; }
+.icon-option { aspect-ratio: 1; border-radius: 14px; border: 2px solid #1e293b; display: flex; align-items: center; justify-content: center; font-size: 28px; cursor: pointer; transition: all 0.15s; background: #0f172a; overflow: hidden; }
+.icon-option:active { transform: scale(0.92); }
+.icon-option.selected { border-color: #38bdf8; box-shadow: 0 0 12px rgba(56,189,248,0.3); }
+.icon-option img { width: 100%; height: 100%; object-fit: cover; }
+.icon-custom-row { display: flex; gap: 8px; align-items: center; margin-top: 8px; }
+.icon-img-preview { width: 64px; height: 64px; border-radius: 16px; object-fit: cover; border: 2px solid #38bdf8; flex-shrink: 0; }
+.icon-upload-zone { flex: 1; background: #0f172a; border: 2px dashed #334155; border-radius: 12px; padding: 14px; text-align: center; cursor: pointer; transition: border-color 0.15s; }
+.icon-upload-zone:hover { border-color: #38bdf8; }
+.icon-upload-zone-label { font-size: 13px; color: #64748b; }
+.icon-preview-big { width: 64px; height: 64px; border-radius: 16px; background: linear-gradient(135deg, #1e3a5f, #4f46e5); display: flex; align-items: center; justify-content: center; font-size: 36px; border: 2px solid #1e293b; flex-shrink: 0; }
+.app-name-preview { font-size: 18px; font-weight: 800; margin-top: 4px; color: #e2e8f0; }
+.preview-card { background: #0f172a; border: 1px solid #1e293b; border-radius: 14px; padding: 16px; display: flex; align-items: center; gap: 14px; margin-bottom: 6px; }
+.preview-info { flex: 1; }
+.preview-label { font-size: 11px; color: #64748b; font-weight: 700; letter-spacing: 1px; text-transform: uppercase; font-family: monospace; margin-bottom: 4px; }
+.color-grid { display: grid; grid-template-columns: repeat(5, 1fr); gap: 8px; }
+.color-option { aspect-ratio: 1; border-radius: 10px; cursor: pointer; transition: all 0.15s; border: 2px solid transparent; }
+.color-option:active { transform: scale(0.9); }
+.color-option.selected { border-color: #fff; box-shadow: 0 0 10px rgba(255,255,255,0.3); }
+
+/* ── MULTI-SELECT ── */
+.select-mode .list-item { padding-left: 14px; }
+.list-checkbox { width: 24px; height: 24px; border-radius: 50%; border: 2px solid #334155; background: transparent; display: flex; align-items: center; justify-content: center; flex-shrink: 0; transition: all 0.15s; cursor: pointer; }
+.list-item.selected .list-checkbox { background: #38bdf8; border-color: #38bdf8; }
+.list-item.selected { background: #0d1f35 !important; }
+.select-bar { display: none; position: sticky; bottom: 0; z-index: 50; background: linear-gradient(135deg, #0f172a, #1e1b4b); border-top: 1px solid #1e293b; padding: 12px 20px; flex-direction: row; align-items: center; gap: 10px; }
+.select-bar.visible { display: flex; }
+.select-count { flex: 1; font-size: 14px; font-weight: 700; color: #e2e8f0; }
+.select-all-btn { font-size: 12px; color: #38bdf8; background: transparent; border: none; cursor: pointer; font-weight: 600; padding: 0; }
+/* ── DETAIL NAV ── */
+.detail-nav-btns { display: flex; gap: 6px; }
+.detail-nav-btn { background: #0f172a; border: 1px solid #1e293b; border-radius: 8px; color: #94a3b8; font-size: 18px; width: 36px; height: 36px; display: flex; align-items: center; justify-content: center; cursor: pointer; transition: all 0.15s; flex-shrink: 0; }
+.detail-nav-btn:active { background: #1e293b; }
+.detail-nav-btn:disabled { opacity: 0.25; cursor: default; }
+
+</style>
+</head>
+<body>
+<!-- ════ LOCK SCREEN — musí být první element v body ════ -->
+<div id="lock-screen" style="display:none;position:fixed;inset:0;z-index:9999;background:linear-gradient(160deg,#020617 0%,#0f172a 50%,#1e1b4b 100%);flex-direction:column;align-items:center;justify-content:center;padding:40px 30px">
+  <div class="lock-app-icon" id="lock-app-icon-el"><span id="lock-icon-content">👤</span></div>
+  <div class="lock-app-name" id="lock-app-name-el">Osobnosti</div>
+  <div class="lock-subtitle" id="lock-subtitle">Zadej PIN pro přístup</div>
+
+  <!-- PIN klávesnice -->
+  <div class="lock-main" id="lock-main">
+    <div class="pin-dots" id="pin-dots">
+      <div class="pin-dot" id="pd0"></div>
+      <div class="pin-dot" id="pd1"></div>
+      <div class="pin-dot" id="pd2"></div>
+      <div class="pin-dot" id="pd3"></div>
+    </div>
+    <div class="pin-grid">
+      <div class="pin-key" onclick="pinPress('1')"><span>1</span></div>
+      <div class="pin-key" onclick="pinPress('2')"><span>2</span><span class="pin-key-letters">ABC</span></div>
+      <div class="pin-key" onclick="pinPress('3')"><span>3</span><span class="pin-key-letters">DEF</span></div>
+      <div class="pin-key" onclick="pinPress('4')"><span>4</span><span class="pin-key-letters">GHI</span></div>
+      <div class="pin-key" onclick="pinPress('5')"><span>5</span><span class="pin-key-letters">JKL</span></div>
+      <div class="pin-key" onclick="pinPress('6')"><span>6</span><span class="pin-key-letters">MNO</span></div>
+      <div class="pin-key" onclick="pinPress('7')"><span>7</span><span class="pin-key-letters">PQRS</span></div>
+      <div class="pin-key" onclick="pinPress('8')"><span>8</span><span class="pin-key-letters">TUV</span></div>
+      <div class="pin-key" onclick="pinPress('9')"><span>9</span><span class="pin-key-letters">WXYZ</span></div>
+      <div class="pin-key" onclick="pinPress('0')"><span>0</span></div>
+      <div class="pin-key pin-key-action" onclick="pinBackspace()">⌫</div>
+    </div>
+    <div class="lock-wrong-msg" id="lock-wrong-msg">Nesprávný PIN</div>
+  </div>
+</div>
+
+<script>
+// Zobraz lock screen OKAMŽITĚ pokud je PIN uložen — ještě před vykreslením čehokoli
+(function(){
+  try {
+    var d = JSON.parse(localStorage.getItem('osobnosti_lock')||'{}');
+    if(d && d.pin){
+      var el = document.getElementById('lock-screen');
+      if(el) el.style.display = 'flex';
+    }
+  } catch(e){}
+})();
+</script>
+
+<!-- ════ LIST VIEW ════ -->
+<div id="view-list" class="view active">
+  <div class="header">
+    <div class="header-row">
+      <div>
+        <div class="header-label" id="app-header-label">DATABÁZE</div>
+        <div class="header-title"><span id="app-header-icon"></span><span id="app-header-title">Osobnosti</span> <span class="count-badge" id="count-badge">0</span></div>
+      </div>
+      <div style="display:flex;gap:8px;align-items:center">
+        <button class="btn btn-ghost btn-sm" id="select-mode-btn" onclick="toggleSelectMode()" style="padding:9px 12px">☑</button>
+        <label class="btn btn-ghost btn-sm" title="Importovat DOCX" style="padding:9px 12px;font-size:15px;cursor:pointer">📄<input type="file" accept=".docx,application/vnd.openxmlformats-officedocument.wordprocessingml.document" style="display:none" onchange="importDocx(event)"></label>
+        <button class="btn btn-ghost btn-sm" onclick="openSettings()" style="padding:9px 12px;font-size:16px">⚙️</button>
+        <button class="btn btn-ghost btn-sm" onclick="showView('links')" style="padding:9px 12px;font-size:15px" title="Odkazy">🔗</button>
+        <button class="btn btn-primary" onclick="openNew()">＋ Přidat</button>
+      </div>
+    </div>
+    <div class="search-row">
+      <input class="search-input" id="search-input" placeholder="Hledat..." oninput="debouncedSearch()">
+      <button class="filter-btn" id="filter-btn" onclick="toggleFilterPanel()">
+        ⚙ Filtry <span class="n-badge" id="filter-n-badge" style="display:none"></span>
+      </button>
+    </div>
+    <div class="sort-row" id="sort-row"></div>
+  </div>
+  <div class="filter-panel" id="filter-panel">
+    <div class="filter-inner">
+      <div class="filter-grid">
+        <div class="filter-group"><label>Jméno</label><input class="filter-input" id="filt-name" placeholder="Tesla..." oninput="renderList()"></div>
+        <div class="filter-group"><label>Rok narození</label><input class="filter-input" id="filt-born" placeholder="1856" type="number" min="0" max="2100" oninput="renderList()"></div>
+        <div class="filter-group"><label>Země původu</label><input class="filter-input" id="filt-country" placeholder="Česko..." oninput="renderList()"></div>
+        <div class="filter-group"><label>Profese</label><input class="filter-input" id="filt-profession" placeholder="Fyzik, Herec..." oninput="renderList()"></div>
+        <div class="filter-group" style="grid-column:1/-1"><label>Min. hodnocení ★</label>
+          <select class="filter-input" id="filt-rating" onchange="renderList()">
+            <option value="">Vše</option><option value="5">★★★★★</option><option value="4">★★★★+</option><option value="3">★★★+</option><option value="2">★★+</option>
+          </select>
+        </div>
+      </div>
+      <div class="best-filter-row">
+        <label>Best:</label>
+        <div style="display:flex;gap:6px">
+          <div class="tc aa" id="bf-all" onclick="setBestFilter('all')">Vše</div>
+          <div class="tc" id="bf-yes" onclick="setBestFilter('yes')">⭐ Jen Best</div>
+          <div class="tc" id="bf-no" onclick="setBestFilter('no')">Bez Best</div>
+        </div>
+      </div>
+      <button class="btn btn-ghost btn-sm" onclick="clearFilters()">✕ Vymazat filtry</button>
+    </div>
+  </div>
+  <div id="list-container"></div>
+  <div class="spacer"></div>
+  <!-- SELECT BAR -->
+  <div class="select-bar" id="select-bar">
+    <span class="select-count" id="select-count-label">0 vybráno</span>
+    <button class="select-all-btn" onclick="selectAll()">Vybrat vše</button>
+    <button class="btn btn-ghost btn-sm" onclick="toggleSelectMode()">Zrušit</button>
+    <button class="btn btn-danger btn-sm" id="select-delete-btn" onclick="deleteSelected()">🗑 Smazat</button>
+  </div>
+</div>
+
+
+<!-- ════ LINKS VIEW ════ -->
+<div id="view-links" class="view">
+  <div class="header" style="position:sticky;top:0;z-index:100">
+    <div class="header-row">
+      <div>
+        <div class="header-label">RYCHLÉ ODKAZY</div>
+        <div class="header-title">🔗 Odkazy</div>
+      </div>
+      <div style="display:flex;gap:8px;align-items:center">
+        <button class="btn btn-ghost btn-sm" onclick="showView('list')" style="padding:8px 14px;font-size:13px">← Zpět</button>
+        <button class="btn btn-primary btn-sm" onclick="openAddGlobalLink()">＋ Přidat</button>
+      </div>
+    </div>
+  </div>
+  <div id="global-links-container" style="padding:16px 16px 100px"></div>
+</div>
+
+<!-- ADD GLOBAL LINK MODAL -->
+<div id="global-link-modal" style="display:none;position:fixed;inset:0;z-index:9000;background:rgba(2,6,23,0.95);flex-direction:column;align-items:center;justify-content:center;padding:24px">
+  <div style="width:100%;max-width:440px;background:#0f172a;border:1px solid #1e293b;border-radius:16px;padding:24px">
+    <div style="font-size:16px;font-weight:800;margin-bottom:18px" id="glm-title">Přidat odkaz</div>
+    <div style="margin-bottom:12px">
+      <label class="form-label">Název</label>
+      <input class="form-input" id="glm-label" placeholder="Název odkazu..." style="margin-top:4px">
+    </div>
+    <div style="margin-bottom:12px">
+      <label class="form-label">URL adresa</label>
+      <input class="form-input" id="glm-url" placeholder="https://..." type="url" style="margin-top:4px">
+    </div>
+    <div style="margin-bottom:18px">
+      <label class="form-label">Kategorie (volitelné)</label>
+      <input class="form-input" id="glm-cat" placeholder="např. Sociální sítě, Zprávy..." style="margin-top:4px" list="glm-cat-list">
+      <datalist id="glm-cat-list"></datalist>
+    </div>
+    <div style="display:flex;gap:10px">
+      <button class="btn btn-primary" style="flex:1;justify-content:center" onclick="saveGlobalLink()">✓ Uložit</button>
+      <button class="btn btn-ghost" style="flex:1;justify-content:center" onclick="closeAddGlobalLink()">Zrušit</button>
+    </div>
+  </div>
+</div>
+
+<!-- ════ DETAIL VIEW ════ -->
+<div id="view-detail" class="view">
+  <div class="detail-hero">
+    <div class="detail-hero-nav">
+      <button class="btn btn-ghost" style="padding:8px 14px;font-size:13px" onclick="showView('list')">← Zpět</button>
+      <div class="detail-nav-btns">
+        <button class="detail-nav-btn" id="detail-prev-btn" onclick="navDetail(-1)" title="Předchozí">‹</button>
+        <button class="detail-nav-btn" id="detail-next-btn" onclick="navDetail(1)" title="Další">›</button>
+        <button class="btn btn-secondary" style="padding:8px 16px;font-size:13px" onclick="openEdit()">✏️ Upravit</button>
+        <button class="detail-nav-btn" id="detail-search-web-btn" onclick="searchPersonOnWeb()" title="Hledat na internetu" style="font-size:15px">🌐</button>
+      </div>
+    </div>
+    <div class="detail-center">
+      <div id="detail-main-photo"></div>
+      <div class="detail-name" id="detail-name"></div>
+      <div class="detail-alias" id="detail-alias"></div>
+      <div class="stars" id="detail-stars" style="justify-content:center;margin-top:4px"></div>
+    </div>
+  </div>
+  <div class="detail-body">
+    <div class="tags-row" id="detail-tags"></div>
+    <div class="info-card" id="detail-info"></div>
+
+    <!-- Gallery section -->
+    <div id="detail-gallery-section" style="display:none" class="info-card gallery-section">
+      <div class="info-section-title">📸 Fotogalerie</div>
+      <div class="gallery-main" id="gallery-main" onclick="openLightbox()">
+        <img id="gallery-main-img" src="" alt="">
+        <button class="gallery-nav gallery-nav-l" onclick="event.stopPropagation();galleryNav(-1)">‹</button>
+        <button class="gallery-nav gallery-nav-r" onclick="event.stopPropagation();galleryNav(1)">›</button>
+        <span class="gallery-counter" id="gallery-counter"></span>
+      </div>
+      <div class="gallery-thumbs" id="gallery-thumbs"></div>
+    </div>
+
+    <div class="info-card" id="detail-notes" style="display:none">
+      <div class="info-section-title">Poznámky / Bio</div>
+      <p class="info-text" id="detail-notes-text"></p>
+    </div>
+
+    <!-- Links section -->
+    <div id="detail-links-section" style="display:none" class="links-section">
+      <div class="info-card" style="padding-bottom:4px">
+        <div class="info-section-title">🔗 Odkazy</div>
+        <div id="detail-links-list"></div>
+      </div>
+    </div>
+
+    <div id="detail-delete-wrap">
+      <button class="btn btn-ghost btn-full" style="color:#ef4444;border-color:#7f1d1d" onclick="showDeleteConfirm()">🗑️ Smazat záznam</button>
+    </div>
+    <div id="detail-delete-confirm" class="delete-confirm" style="display:none">
+      <div class="delete-confirm-text" id="delete-confirm-text"></div>
+      <div class="delete-confirm-btns">
+        <button class="btn btn-ghost" onclick="hideDeleteConfirm()">Zrušit</button>
+        <button class="btn btn-danger" onclick="deletePerson()">Smazat</button>
+      </div>
+    </div>
+  </div>
+  <div class="spacer"></div>
+</div>
+
+<!-- ════ FORM VIEW ════ -->
+<div id="view-form" class="view">
+  <div class="form-header">
+    <div class="form-header-row">
+      <button class="btn btn-ghost" style="padding:8px 14px;font-size:13px" onclick="formBack()">← Zpět</button>
+      <div class="form-header-title" id="form-title">Nová osoba</div>
+      <button class="btn btn-primary" style="padding:9px 18px" onclick="submitForm()">Uložit</button>
+    </div>
+  </div>
+  <div class="form-body">
+
+    <!-- ── Multi-photo upload ── -->
+    <div class="form-group">
+      <label class="form-label">📸 Fotografie</label>
+      <div class="photos-list" id="form-photos-list"></div>
+      <div class="photo-add-row">
+        <label class="photo-add-btn">
+          📷 Přidat z galerie
+          <input type="file" accept="image/*" multiple style="display:none" onchange="handlePhotosUpload(event)">
+        </label>
+        <button type="button" class="photo-add-btn" onclick="document.getElementById('photo-url-dlg').style.display='flex'">🔗 URL</button>
+      </div>
+      <!-- URL dialog inline -->
+      <div id="photo-url-dlg" style="display:none;flex-direction:column;gap:8px;margin-top:8px;background:#0f172a;border:1px solid #1e293b;border-radius:10px;padding:12px">
+        <input class="form-input" id="photo-url-val" placeholder="https://..." style="font-size:13px">
+        <div style="display:flex;gap:8px">
+          <button class="btn btn-primary btn-sm" onclick="addPhotoByUrl()">Přidat</button>
+          <button class="btn btn-ghost btn-sm" onclick="document.getElementById('photo-url-dlg').style.display='none'">Zrušit</button>
+        </div>
+      </div>
+      <div style="font-size:11px;color:#475569;margin-top:6px">★ = titulní fotka zobrazená v profilu nahoře</div>
+    </div>
+
+    <div class="form-group"><label class="form-label">Jméno *</label><input class="form-input" id="f-name" placeholder="Celé jméno"></div>
+    <div class="form-group"><label class="form-label">Alias / Přezdívka</label><input class="form-input" id="f-alias" placeholder="Přezdívka nebo titul"></div>
+    <div class="form-group"><label class="form-label">Profese</label><input class="form-input" id="f-profession" placeholder="Vynálezce, Fyzik, ..."></div>
+    <div class="form-group">
+      <label class="form-label">Země původu</label>
+      <div style="position:relative">
+        <input class="form-input" id="f-country" placeholder="Česko, Německo..." oninput="onCountryInput(this)" autocomplete="off">
+        <div id="country-suggestions" style="display:none;position:absolute;top:100%;left:0;right:0;background:#1e293b;border:1px solid #38bdf8;border-radius:0 0 10px 10px;z-index:50;max-height:200px;overflow-y:auto;margin-top:-1px"></div>
+      </div>
+    </div>
+    <div class="form-group"><label class="form-label">Datum narození</label><input class="form-input" id="f-born" type="date"></div>
+    <div class="form-group"><label class="form-label">Datum úmrtí (prázdné = žije)</label><input class="form-input" id="f-died" type="date"></div>
+    <div class="form-group"><label class="form-label">Hodnocení</label><div class="stars" id="form-stars"></div></div>
+
+    <!-- ── Multi-links ── -->
+    <div class="form-group">
+      <label class="form-label">🔗 Odkazy na web</label>
+      <div class="links-list" id="form-links-list"></div>
+      <button type="button" class="add-link-btn" onclick="addLinkField()">＋ Přidat odkaz</button>
+    </div>
+
+    <!-- Best toggle -->
+    <div class="form-group">
+      <label class="form-label">Best</label>
+      <div class="best-toggle-row">
+        <div class="best-toggle-label">⭐ Označit jako Best<small>Vynikající / oblíbená osobnost</small></div>
+        <label class="toggle-switch"><input type="checkbox" id="f-best"><span class="toggle-slider"></span></label>
+      </div>
+    </div>
+
+    <div class="form-group"><label class="form-label">Poznámky / Bio</label><textarea class="form-input" id="f-notes" rows="4" placeholder="Krátký životopis..."></textarea></div>
+    <button class="btn btn-primary btn-full" id="form-submit-btn" onclick="submitForm()">✓ Přidat osobu</button>
+    <div class="spacer"></div>
+  </div>
+</div>
+
+
+<!-- ════ SETTINGS VIEW ════ -->
+<div id="view-settings" class="view">
+  <div class="settings-header">
+    <div class="form-header-row">
+      <button class="btn btn-ghost" style="padding:8px 14px;font-size:13px" onclick="showView('list')">← Zpět</button>
+      <div class="form-header-title">Nastavení aplikace</div>
+      <button class="btn btn-primary" style="padding:9px 18px" onclick="saveSettings()">Uložit</button>
+    </div>
+  </div>
+  <div class="settings-body">
+
+    <!-- Preview -->
+    <div class="preview-card">
+      <div class="icon-preview-big" id="settings-preview-icon-bg" style="overflow:hidden;padding:0">
+        <span id="settings-preview-icon" style="font-size:36px;display:flex;align-items:center;justify-content:center;width:100%;height:100%">👤</span>
+      </div>
+      <div class="preview-info">
+        <div class="preview-label">Náhled</div>
+        <div class="app-name-preview" id="settings-preview-name">Osobnosti</div>
+      </div>
+    </div>
+
+    <!-- App name -->
+    <div class="settings-section-title">Název aplikace</div>
+    <input class="form-input" id="settings-name-input" placeholder="Název aplikace..." oninput="document.getElementById('settings-preview-name').textContent=this.value||'Moje appka'">
+
+    <!-- Icon -->
+    <div class="settings-section-title">Ikona aplikace</div>
+
+    <!-- Upload image -->
+    <label class="icon-upload-zone" style="display:flex;align-items:center;gap:12px;text-align:left;cursor:pointer">
+      <div id="icon-upload-preview" style="width:56px;height:56px;border-radius:14px;background:#1e293b;display:flex;align-items:center;justify-content:center;font-size:30px;flex-shrink:0;overflow:hidden;border:2px solid #334155">
+        <span id="icon-upload-preview-content">📷</span>
+      </div>
+      <div>
+        <div style="font-size:14px;font-weight:700;color:#e2e8f0;margin-bottom:3px">Nahrát obrázek</div>
+        <div class="icon-upload-zone-label">PNG, JPG, SVG — bude oříznut na čtverec</div>
+      </div>
+      <input type="file" accept="image/*" id="icon-file-input" style="display:none" onchange="handleIconImageUpload(event)">
+    </label>
+
+    <!-- Divider -->
+    <div style="display:flex;align-items:center;gap:10px;margin:14px 0 10px">
+      <div style="flex:1;height:1px;background:#1e293b"></div>
+      <span style="font-size:12px;color:#475569;font-weight:600">nebo vyber emoji</span>
+      <div style="flex:1;height:1px;background:#1e293b"></div>
+    </div>
+
+    <div class="icon-grid" id="icon-grid"></div>
+
+    <!-- Accent color -->
+    <div class="settings-section-title">Barva zvýraznění</div>
+    <div class="color-grid" id="color-grid"></div>
+
+    <!-- Install PWA -->
+    <div class="settings-section-title">📲 Instalace aplikace</div>
+    <div class="info-card" style="margin-bottom:8px">
+      <div style="font-size:13px;color:#64748b;margin-bottom:10px">Přidej aplikaci na plochu telefonu nebo PC pro použití bez prohlížeče.</div>
+      <button class="btn btn-primary btn-full" onclick="triggerInstall()">📲 Přidat na plochu</button>
+    </div>
+
+    <!-- Data export/import -->
+    <div class="settings-section-title">💾 Záloha a přenos dat</div>
+    <div class="info-card" style="margin-bottom:8px">
+      <div style="font-size:13px;color:#64748b;margin-bottom:10px">Exportuj všechna data do souboru. Soubor lze načíst na jiném zařízení (PC, tablet…) — stačí otevřít aplikaci a importovat.</div>
+      <div style="display:flex;gap:8px;flex-wrap:wrap">
+        <button class="btn btn-secondary" style="flex:1;min-width:120px;justify-content:center" onclick="exportData()">⬇ Export dat</button>
+        <label class="btn btn-ghost" style="flex:1;min-width:120px;justify-content:center;cursor:pointer">⬆ Import dat<input type="file" accept=".json" style="display:none" onchange="importData(event)"></label>
+      </div>
+    </div>
+
+    <!-- Security -->
+    <div class="settings-section-title">🔒 Zabezpečení</div>
+    <div class="info-card" style="margin-bottom:8px">
+      <div style="display:flex;justify-content:space-between;align-items:center">
+        <div>
+          <div style="font-size:14px;font-weight:700">PIN kód</div>
+          <div style="font-size:12px;color:#64748b;margin-top:2px" id="pin-status-label">Není nastaven</div>
+        </div>
+        <button class="btn btn-secondary btn-sm" onclick="openPinSetup()">Nastavit</button>
+      </div>
+    </div>
+
+<!-- ════ LIGHTBOX ════ -->
+<div class="lightbox" id="lightbox" onclick="closeLightbox()">
+  <button class="lightbox-close" onclick="event.stopPropagation();closeLightbox()">✕</button>
+  <button class="lightbox-nav lightbox-nav-l" onclick="event.stopPropagation();lightboxNav(-1)">‹</button>
+  <img id="lightbox-img" src="" alt="" onclick="event.stopPropagation()" style="touch-action:none" 
+    ontouchstart="lbTouchStart(event)" ontouchmove="lbTouchMove(event)" ontouchend="lbTouchEnd(event)">
+  <button class="lightbox-nav lightbox-nav-r" onclick="event.stopPropagation();lightboxNav(1)">›</button>
+</div>
+
+
+
+
+
+
+<!-- ════ PIN SETUP MODAL ════ -->
+<div id="pin-setup-modal" style="display:none;position:fixed;inset:0;z-index:10000;background:rgba(2,6,23,0.95);flex-direction:column;align-items:center;justify-content:center;padding:30px">
+  <div style="font-size:20px;font-weight:800;color:#e2e8f0;margin-bottom:6px" id="pin-setup-title">Nastav nový PIN</div>
+  <div style="font-size:13px;color:#64748b;margin-bottom:28px" id="pin-setup-subtitle">Zadej 4místný PIN</div>
+  <div class="pin-dots" id="pin-setup-dots">
+    <div class="pin-dot" id="spd0"></div><div class="pin-dot" id="spd1"></div>
+    <div class="pin-dot" id="spd2"></div><div class="pin-dot" id="spd3"></div>
+  </div>
+  <div class="pin-grid" style="max-width:280px;width:100%;margin-top:24px">
+    <div class="pin-key" onclick="pinSetupPress('1')">1</div>
+    <div class="pin-key" onclick="pinSetupPress('2')">2</div>
+    <div class="pin-key" onclick="pinSetupPress('3')">3</div>
+    <div class="pin-key" onclick="pinSetupPress('4')">4</div>
+    <div class="pin-key" onclick="pinSetupPress('5')">5</div>
+    <div class="pin-key" onclick="pinSetupPress('6')">6</div>
+    <div class="pin-key" onclick="pinSetupPress('7')">7</div>
+    <div class="pin-key" onclick="pinSetupPress('8')">8</div>
+    <div class="pin-key" onclick="pinSetupPress('9')">9</div>
+    <div class="pin-key pin-key-action" onclick="pinSetupCancel()" style="font-size:14px;color:#64748b">Zrušit</div>
+    <div class="pin-key" onclick="pinSetupPress('0')">0</div>
+    <div class="pin-key pin-key-action" onclick="pinSetupBackspace()">⌫</div>
+  </div>
+  <button onclick="removePinConfirm()" id="pin-remove-btn" style="margin-top:20px;background:transparent;border:none;color:#ef4444;font-size:13px;cursor:pointer;display:none">Odebrat PIN</button>
+</div>
+
+
+
+<script>
+const STORAGE_KEY = 'osobnosti_v3';
+const DEFAULT_DATA = [];
+
+let people=[], selectedId=null, isNew=false, formRating=3, currentSort='newest', filterOpen=false, bestFilter='all';
+let selectMode=false, selectedIds=new Set();
+let detailNavList=[]; // ordered list of ids for prev/next navigation
+let formPhotos=[]; // [{src, main}]
+let formLinks=[];  // [{label, url}]
+let galleryIdx=0;
+let galleryPhotos=[];
+let lightboxIdx=0;
+
+// ── INDEXEDDB ──
+const DB_NAME='osobnosti_db', DB_STORE='data', DB_VER=1;
+let _db=null;
+function openDB(){
+  if(_db) return Promise.resolve(_db);
+  return new Promise((res,rej)=>{
+    const req=indexedDB.open(DB_NAME,DB_VER);
+    req.onupgradeneeded=e=>{const db=e.target.result;if(!db.objectStoreNames.contains(DB_STORE))db.createObjectStore(DB_STORE);};
+    req.onsuccess=e=>{_db=e.target.result;res(_db);};
+    req.onerror=e=>rej(e.target.error);
+  });
+}
+async function idbGet(key){
+  const db=await openDB();
+  return new Promise((res,rej)=>{
+    const tx=db.transaction(DB_STORE,'readonly');
+    const req=tx.objectStore(DB_STORE).get(key);
+    req.onsuccess=()=>res(req.result);
+    req.onerror=e=>rej(e.target.error);
+  });
+}
+async function idbSet(key,val){
+  const db=await openDB();
+  return new Promise((res,rej)=>{
+    const tx=db.transaction(DB_STORE,'readwrite');
+    const req=tx.objectStore(DB_STORE).put(val,key);
+    req.onsuccess=()=>res();
+    req.onerror=e=>rej(e.target.error);
+  });
+}
+
+// ── DATA ──
+async function loadData(){
+  try{
+    let stored=await idbGet(STORAGE_KEY);
+    // migrate from localStorage if IndexedDB empty
+    if(stored===undefined){
+      try{const ls=localStorage.getItem(STORAGE_KEY);if(ls)stored=JSON.parse(ls);}catch{}
+    }
+    if(stored!==undefined&&stored!==null){
+      // Odstranit výchozí záznamy s ID 100-118
+      if(Array.isArray(stored)){
+        stored=stored.filter(p=>p.id<100||p.id>118);
+      }
+      people=stored; // může být i prázdné pole – to je záměr uživatele
+      await saveData(); // uložit vyčištěná data
+    } else {
+      people=[...DEFAULT_DATA.map(p=>({...p}))];
+      await saveData();
+    }
+  }catch(e){
+    console.warn('loadData error',e);
+    people=[...DEFAULT_DATA.map(p=>({...p}))];
+  }
+}
+async function saveData(){
+  try{await idbSet(STORAGE_KEY,people);}catch(e){console.warn('saveData error',e);}
+}
+
+// ── PROGRESS MODAL ──
+let _importCancelled = false;
+
+function showProgressModal(msg, pct, showCancel){
+  let m = document.getElementById('progress-modal');
+  if(!m){
+    m = document.createElement('div');
+    m.id = 'progress-modal';
+    m.style.cssText = 'position:fixed;inset:0;z-index:9800;background:rgba(2,6,23,0.96);display:flex;align-items:center;justify-content:center;padding:24px';
+    m.innerHTML = `
+      <div style="width:100%;max-width:400px;background:#0f172a;border:1px solid #1e293b;border-radius:16px;padding:24px">
+        <div id="pm-msg" style="font-size:15px;font-weight:700;margin-bottom:16px;text-align:center">Načítám…</div>
+        <div style="background:#1e293b;border-radius:8px;height:10px;overflow:hidden;margin-bottom:10px">
+          <div id="pm-bar" style="height:100%;background:linear-gradient(90deg,#38bdf8,#818cf8);border-radius:8px;transition:width 0.3s;width:0%"></div>
+        </div>
+        <div id="pm-info" style="font-size:12px;color:#64748b;text-align:center;min-height:18px"></div>
+        <button id="pm-cancel-btn" style="display:none;margin-top:14px;width:100%;padding:10px;background:transparent;border:1px solid #ef4444;color:#ef4444;border-radius:8px;font-size:13px;font-weight:600;cursor:pointer" onclick="_importCancelled=true;this.disabled=true;this.textContent='Zastavuji…'">⏹ Zastavit import</button>
+      </div>`;
+    document.body.appendChild(m);
+  }
+  m.style.display = 'flex';
+  _importCancelled = false;
+  updateProgressModal(msg, pct, null);
+  const btn = document.getElementById('pm-cancel-btn');
+  if(btn){ btn.style.display = showCancel ? '' : 'none'; btn.disabled = false; btn.textContent = '⏹ Zastavit import'; }
+}
+
+function updateProgressModal(msg, pct, info){
+  const msgEl = document.getElementById('pm-msg');
+  const bar   = document.getElementById('pm-bar');
+  const infoEl= document.getElementById('pm-info');
+  if(msgEl) msgEl.textContent = msg;
+  if(bar)   bar.style.width   = pct + '%';
+  if(infoEl) infoEl.textContent = info || '';
+}
+
+function hideProgressModal(){
+  const m = document.getElementById('progress-modal');
+  if(m) m.style.display = 'none';
+}
+
+// ── DOCX IMPORT ──
+async function importDocx(event){
+  const file = event.target.files && event.target.files[0];
+  event.target.value = '';
+  if(!file) return;
+  if(typeof mammoth === 'undefined'){
+    alert('⚠️ Knihovna pro čtení DOCX (mammoth.js) není načtena.\n\nPro import DOCX souborů je potřeba připojení k internetu při otevření aplikace.\n\nAlternativně: exportuj data z Wordu jako prostý text nebo použij funkci zálohy JSON.');
+    return;
+  }
+
+  showProgressModal('📄 Načítám soubor…', 0, null);
+
+  try{
+    const arrayBuffer = await file.arrayBuffer();
+    updateProgressModal('⚙️ Parsování DOCX…', 10, null);
+    await new Promise(r => setTimeout(r, 50));
+
+    // Use convertToHtml so we get images as base64 <img> tags
+    const result = await mammoth.convertToHtml({arrayBuffer}, {
+      convertImage: mammoth.images.imgElement(async img => {
+        const buf = await img.read();
+        const b64 = btoa(String.fromCharCode(...new Uint8Array(buf)));
+        return { src: `data:${img.contentType};base64,${b64}` };
+      })
+    });
+    const html = result.value || '';
+    if(!html){ hideProgressModal(); alert('Soubor neobsahuje žádný obsah.'); return; }
+
+    // Parse HTML in a detached div (never inserted into DOM — safe & fast)
+    const tmp = document.createElement('div');
+    tmp.innerHTML = html;
+
+    // Check if it's a table document
+    const cells = tmp.querySelectorAll('td');
+    let records;
+
+    if(cells.length > 0){
+      // TABLE mode: each <td> = one person
+      records = parseCellRecords(cells);
+    } else {
+      // PLAIN TEXT mode: fallback to line-based parser
+      const text = tmp.textContent || '';
+      const lines = text.split(/\n/).map(l=>l.trim()).filter(l=>l.length>1&&l.length<200);
+      records = splitIntoRecords(lines.join('\n'));
+    }
+
+    tmp.innerHTML = ''; // free memory
+    hideProgressModal();
+
+    if(!records.length){ alert('Žádné záznamy nenalezeny.'); return; }
+
+    if(records.length <= 2){
+      // Single / couple — open form with first
+      const rec = records[0];
+      openNew();
+      if(rec.name)    document.getElementById('f-name').value    = rec.name;
+      if(rec.alias)   document.getElementById('f-alias').value   = rec.alias;
+      if(rec.country) document.getElementById('f-country').value = rec.country;
+      if(rec.born)    document.getElementById('f-born').value    = rec.born;
+      if(rec.photo){
+        formPhotos = [{src: rec.photo, main: true}];
+        renderFormPhotos();
+      }
+      return;
+    }
+
+    const choice = await showImportChoiceDialog(records.length, file.name);
+    if(choice === 'bulk')   await bulkImportRecords(records);
+    else if(choice === 'single'){
+      const rec = records[0];
+      openNew();
+      if(rec.name)    document.getElementById('f-name').value    = rec.name;
+      if(rec.alias)   document.getElementById('f-alias').value   = rec.alias;
+      if(rec.country) document.getElementById('f-country').value = rec.country;
+      if(rec.born)    document.getElementById('f-born').value    = rec.born;
+      if(rec.photo){
+        formPhotos = [{src: rec.photo, main: true}];
+        renderFormPhotos();
+      }
+    }
+
+  } catch(e){
+    hideProgressModal();
+    console.error('importDocx error', e);
+    alert('Nepodařilo se načíst soubor: ' + e.message);
+  }
+}
+
+// ── CELL-BASED PARSER (table mode) ──
+function parseCellRecords(cells){
+  const records = [];
+  function tryDate(s){
+    const m = s.match(/(\d{1,2})[\.\s]+(\d{1,2})[\.\s]+(\d{4})/);
+    if(m) return `${m[3]}-${m[2].padStart(2,'0')}-${m[1].padStart(2,'0')}`;
+    const y = s.match(/^(\d{4})$/);
+    if(y) return `${y[1]}-01-01`;
+    return '';
+  }
+  function isDate(s){ return !!tryDate(s); }
+  function isArtefact(s){ return !s || /^[A-Za-z0-9]{1,2}$/.test(s.trim()); }
+
+  cells.forEach(cell => {
+    // Get all text nodes and img nodes in order
+    const rec = {name:'', alias:'', country:'', born:'', photo:''};
+
+    // Extract photo (first base64 img in cell)
+    const img = cell.querySelector('img[src^="data:image"]');
+    if(img) rec.photo = img.src;
+
+    // Extract text lines from cell
+    const texts = [];
+    cell.querySelectorAll('p, span, div').forEach(el => {
+      const t = el.textContent.trim();
+      if(t) texts.push(t);
+    });
+    // Fallback if no block elements
+    if(!texts.length){
+      cell.textContent.split('\n').forEach(t => { t=t.trim(); if(t) texts.push(t); });
+    }
+
+    let nameFound=false, countryFound=false, dateFound=false;
+    for(const raw of texts){
+      const line = raw.trim();
+      if(!line || isArtefact(line)) continue;
+
+      if(!nameFound){
+        const aliasM = line.match(/^(.+?)\s*\(([^)]+)\)\s*$/);
+        if(aliasM){ rec.name=aliasM[1].trim(); rec.alias=aliasM[2].trim(); }
+        else { rec.name = line; }
+        nameFound = true;
+        continue;
+      }
+      if(!dateFound && isDate(line)){
+        rec.born = tryDate(line); dateFound=true; continue;
+      }
+      if(!countryFound && !isDate(line) && line.length<40 && !/^\d+$/.test(line)){
+        rec.country = line; countryFound=true; continue;
+      }
+    }
+
+    if(rec.name) records.push(rec);
+  });
+
+  return records;
+}
+
+// ── LINE-BASED PARSER FALLBACK (plain text mode) ──
+function parseTableRecord(lines){
+  function tryDate(s){
+    if(!s) return '';
+    const m = s.match(/(\d{1,2})[\.\s]+(\d{1,2})[\.\s]+(\d{4})/);
+    if(m) return `${m[3]}-${m[2].padStart(2,'0')}-${m[1].padStart(2,'0')}`;
+    const y = s.match(/^(\d{4})$/);
+    if(y) return `${y[1]}-01-01`;
+    return '';
+  }
+  function isDate(s){ return !!tryDate(s); }
+  function isArtefact(s){ return /^[A-Za-z0-9]{1}$/.test(s) || /^P$/.test(s); }
+
+  const record = { name:'', alias:'', country:'', born:'', photo:'' };
+  let nameFound=false, countryFound=false, dateFound=false;
+  for(const raw of lines){
+    const line = raw.trim();
+    if(!line || isArtefact(line)) continue;
+    if(!nameFound){
+      const aliasM = line.match(/^(.+?)\s*\(([^)]+)\)\s*$/);
+      if(aliasM){ record.name=aliasM[1].trim(); record.alias=aliasM[2].trim(); }
+      else { record.name=line; }
+      nameFound=true; continue;
+    }
+    if(!dateFound && isDate(line)){ record.born=tryDate(line); dateFound=true; continue; }
+    if(!countryFound && !isDate(line) && line.length<40 && !/^\d+$/.test(line)){
+      record.country=line; countryFound=true; continue;
+    }
+  }
+  return record.name ? record : null;
+}
+
+function splitIntoRecords(text){
+  const rawLines = text.split(/\r?\n/).map(l=>l.trim());
+  const records=[], current=[];
+  function looksLikeName(s){
+    if(!s||s.length<2||s.length>80) return false;
+    if(/^\d/.test(s)) return false;
+    if(/^[A-Z]{1}$/.test(s)) return false;
+    return /[A-Za-záčďéěíňóřšťúůýžÁČĎÉĚÍŇÓŘŠŤÚŮÝŽ]/.test(s);
+  }
+  function isArtefact(s){ return !s||/^[A-Za-z0-9]{1}$/.test(s); }
+  function isDate(s){ return /\d{1,2}[\.\s]+\d{1,2}[\.\s]+\d{4}/.test(s)||/^\d{4}$/.test(s); }
+  let seenDate=false;
+  for(const line of rawLines){
+    if(!line||isArtefact(line)) continue;
+    if(current.length>0 && seenDate && looksLikeName(line) && !isDate(line)){
+      const rec=parseTableRecord(current);
+      if(rec) records.push(rec);
+      current.length=0; seenDate=false;
+    }
+    if(isDate(line)) seenDate=true;
+    current.push(line);
+  }
+  if(current.length){ const rec=parseTableRecord(current); if(rec) records.push(rec); }
+  return records;
+}
+
+function showImportChoiceDialog(count, filename){
+  return new Promise(resolve => {
+    const old=document.getElementById('import-choice-modal');
+    if(old) old.remove();
+    const modal=document.createElement('div');
+    modal.id='import-choice-modal';
+    modal.style.cssText='position:fixed;inset:0;z-index:9500;background:rgba(2,6,23,0.95);display:flex;align-items:center;justify-content:center;padding:24px';
+    modal.innerHTML=`
+      <div style="width:100%;max-width:440px;background:#0f172a;border:1px solid #1e293b;border-radius:16px;padding:24px">
+        <div style="font-size:16px;font-weight:800;margin-bottom:8px">📄 Importovat DOCX</div>
+        <div style="font-size:13px;color:#64748b;margin-bottom:20px">
+          Soubor <b style="color:#e2e8f0">${filename}</b> obsahuje<br>
+          <b style="color:#38bdf8;font-size:18px">${count.toLocaleString()}</b> záznamů (včetně fotek, kde jsou).
+          <br><span style="font-size:12px">Jak chceš soubor zpracovat?</span>
+        </div>
+        <div style="display:flex;flex-direction:column;gap:10px">
+          <button class="btn btn-primary btn-full" style="flex-direction:column;height:auto;padding:14px" onclick="document.getElementById('import-choice-modal').remove();window._importChoice('bulk')">
+            <span>📋 Hromadný import všech záznamů</span>
+            <span style="font-size:11px;font-weight:400;opacity:0.75;margin-top:3px">Jméno + alias + země + datum + fotka</span>
+          </button>
+          <button class="btn btn-secondary btn-full" onclick="document.getElementById('import-choice-modal').remove();window._importChoice('single')">
+            👤 Otevřít formulář (1. záznam)
+          </button>
+          <button class="btn btn-ghost btn-full" onclick="document.getElementById('import-choice-modal').remove();window._importChoice('cancel')">Zrušit</button>
+        </div>
+      </div>`;
+    document.body.appendChild(modal);
+    window._importChoice=resolve;
+  });
+}
+
+async function bulkImportRecords(records){
+  const total=records.length;
+  const CHUNK=100; // smaller because photos can be large
+  let added=0;
+  const baseTime=Date.now();
+  const withPhotos=records.filter(r=>r.photo).length;
+
+  showProgressModal('⏳ Importuji záznamy…', 0, true);
+  document.getElementById('pm-cancel-btn').style.display='';
+  await new Promise(r=>setTimeout(r,30));
+
+  for(let i=0; i<total; i+=CHUNK){
+    if(_importCancelled) break;
+    const chunk=records.slice(i,i+CHUNK);
+    const now=Date.now();
+    const elapsed=(now-baseTime)/1000;
+    const rate=added>0?added/elapsed:0;
+    const remaining=rate>0?Math.round((total-added)/rate):null;
+    const etaText=remaining!==null?` • ~${remaining}s`:'';
+
+    for(const rec of chunk){
+      const photoObj = rec.photo ? {src:rec.photo, main:true, focalY:null} : null;
+      if(photoObj) await enrichPhotoWithFocalPoint(photoObj);
+      people.push({
+        id: Date.now()+Math.random(),
+        name: rec.name,
+        alias: rec.alias||'',
+        profession: '',
+        country: rec.country||'',
+        born: rec.born||'',
+        died: '',
+        rating:0, best:false, notes:'',
+        photos: photoObj ? [photoObj] : [],
+        links:[]
+      });
+    }
+    added+=chunk.length;
+
+    const pct=Math.round((added/total)*100);
+    updateProgressModal(
+      '⏳ Importuji záznamy…',
+      pct,
+      `${added.toLocaleString()} / ${total.toLocaleString()} (${pct}%)${etaText}`
+    );
+
+    await saveData();
+    await new Promise(r=>setTimeout(r,15));
+  }
+
+  const wasCancelled=_importCancelled;
+  hideProgressModal();
+  renderList();
+
+  if(wasCancelled){
+    showToast(`⏹ Import zastaven — uloženo ${added.toLocaleString()} záznamů`,4000);
+  } else {
+    const photoInfo=withPhotos>0?` (${withPhotos} s fotkou)`:' (bez fotek)';
+    showToast(`✓ Importováno ${added.toLocaleString()} záznamů${photoInfo}`,4000);
+  }
+}
+
+// Kept for backwards compat (plain-text bulk import)
+async function bulkImportNames(lines){
+  const text=lines.join('\n');
+  const records=splitIntoRecords(text);
+  await bulkImportRecords(records);
+}
+
+// ── TOAST NOTIFICATIONS ──
+let _toastTimer = null;
+function showToast(msg, duration=2000){
+  let t = document.getElementById('app-toast');
+  if(!t){
+    t = document.createElement('div');
+    t.id = 'app-toast';
+    t.style.cssText = 'position:fixed;bottom:80px;left:50%;transform:translateX(-50%);background:#1e293b;color:#e2e8f0;padding:10px 20px;border-radius:20px;font-size:13px;font-weight:600;z-index:9999;border:1px solid #38bdf8;white-space:nowrap;box-shadow:0 4px 20px rgba(0,0,0,0.5);transition:opacity 0.3s';
+    document.body.appendChild(t);
+  }
+  t.textContent = msg;
+  t.style.opacity = '1';
+  clearTimeout(_toastTimer);
+  if(duration > 0) _toastTimer = setTimeout(hideToast, duration);
+}
+function hideToast(){
+  const t = document.getElementById('app-toast');
+  if(t) t.style.opacity = '0';
+}
+
+
+function parseDocxText(text, filename){
+  const lines=text.split(/\r?\n/).map(l=>l.trim()).filter(Boolean);
+  const person={name:'',alias:'',profession:'',country:'',born:'',died:'',notes:''};
+  // Helper: try to parse date string to YYYY-MM-DD
+  function tryDate(s){
+    if(!s)return'';
+    const m=s.match(/(\d{1,2})[.\-\/](\d{1,2})[.\-\/](\d{4})/);
+    if(m)return`${m[3]}-${m[2].padStart(2,'0')}-${m[1].padStart(2,'0')}`;
+    const m2=s.match(/^(\d{4})$/);if(m2)return`${m2[1]}-01-01`;
+    return'';
+  }
+  // Look for labeled fields (case-insensitive)
+  const fieldMap=[
+    {keys:['jméno','name','celé jméno'],field:'name'},
+    {keys:['alias','přezdívka','nickname'],field:'alias'},
+    {keys:['profese','povolání','profession','occupation'],field:'profession'},
+    {keys:['země','country','původ','nation'],field:'country'},
+    {keys:['narozen','narozena','born','datum narození','dob','birth'],field:'born',isDate:true},
+    {keys:['zemřel','zemřela','died','datum úmrtí','death','death date'],field:'died',isDate:true},
+    {keys:['poznámky','bio','životopis','notes','biography','popis'],field:'notes'},
+  ];
+  const notesLines=[];
+  lines.forEach((line,idx)=>{
+    const lower=line.toLowerCase();
+    let matched=false;
+    for(const fm of fieldMap){
+      for(const k of fm.keys){
+        const re=new RegExp('^'+k+'\\s*[:\\-–]\\s*(.+)','i');
+        const m=line.match(re);
+        if(m){
+          const val=m[1].trim();
+          person[fm.field]=fm.isDate?tryDate(val)||val:val;
+          matched=true;break;
+        }
+      }
+      if(matched)break;
+    }
+    // First unmatched line → name if name empty
+    if(!matched&&idx===0&&!person.name) person.name=line;
+    else if(!matched&&idx===1&&!person.alias&&lines.length>2) person.alias=line;
+    else if(!matched&&idx>0) notesLines.push(line);
+  });
+  if(!person.notes&&notesLines.length) person.notes=notesLines.join('\n');
+  // Fallback: use filename (without extension) as name if still empty
+  if(!person.name) person.name=filename.replace(/\.docx$/i,'').replace(/[-_]/g,' ');
+  return person;
+}
+function showView(n){document.querySelectorAll('.view').forEach(v=>v.classList.remove('active'));document.getElementById('view-'+n).classList.add('active');window.scrollTo(0,0);}
+
+// ── SORT ──
+const SORTS=[{k:'newest',l:'🕐 Nejnovější'},{k:'name',l:'A–Z Jméno'},{k:'rating',l:'★ Hodnocení'},{k:'best',l:'⭐ Best'},{k:'born',l:'📅 Rok nar.'}];
+function renderSortChips(){document.getElementById('sort-row').innerHTML=SORTS.map(s=>`<div class="chip ${currentSort===s.k?'active':''}" onclick="setSort('${s.k}')">${s.l}</div>`).join('');}
+function setSort(k){currentSort=k;renderSortChips();renderList();}
+
+// ── FILTERS ──
+function toggleFilterPanel(){filterOpen=!filterOpen;document.getElementById('filter-panel').classList.toggle('open',filterOpen);document.getElementById('filter-btn').classList.toggle('active',filterOpen||countFilters()>0);}
+function countFilters(){return[document.getElementById('filt-name')?.value,document.getElementById('filt-born')?.value,document.getElementById('filt-country')?.value,document.getElementById('filt-profession')?.value,document.getElementById('filt-rating')?.value,bestFilter!=='all'?'1':''].filter(Boolean).length;}
+function setBestFilter(v){bestFilter=v;['all','yes','no'].forEach(x=>{const el=document.getElementById('bf-'+x);el.className='tc'+(x===v?(v==='yes'?' ay':v==='no'?' an':' aa'):'');});renderList();updateFilterBadge();}
+function updateFilterBadge(){const n=countFilters();const b=document.getElementById('filter-n-badge');b.style.display=n?'':'none';b.textContent=n;document.getElementById('filter-btn').classList.toggle('active',filterOpen||n>0);}
+function clearFilters(){['filt-name','filt-born','filt-country','filt-profession','filt-rating'].forEach(id=>{document.getElementById(id).value='';});setBestFilter('all');renderList();updateFilterBadge();}
+
+// ── HELPERS ──
+function fmtDate(d){if(!d)return'—';const dt=new Date(d+'T12:00:00');return dt.toLocaleDateString('cs-CZ',{day:'numeric',month:'long',year:'numeric'});}
+function renderStars(container,value,readonly,onChange){container.innerHTML='';for(let i=1;i<=5;i++){const s=document.createElement('span');s.className='star';s.textContent='★';s.style.fontSize=readonly?'16px':'24px';s.style.color=i<=value?'#f59e0b':'#334155';s.style.cursor=readonly?'default':'pointer';if(!readonly)s.onclick=()=>{onChange(i);renderStars(container,i,false,onChange);};container.appendChild(s);}}
+function starsHtml(r){let h='';for(let i=1;i<=5;i++)h+=`<span style="color:${i<=r?'#f59e0b':'#334155'};font-size:13px">★</span>`;return h;}
+
+// Get main photo src for a person
+function mainPhotoSrc(p){
+  if(!p.photos||!p.photos.length){if(p.photo)return p.photo;return'';}
+  const m=p.photos.find(x=>x.main)||p.photos[0];
+  return m?m.src:'';
+}
+
+function mainPhotoObj(p){
+  if(!p.photos||!p.photos.length) return null;
+  return p.photos.find(x=>x.main)||p.photos[0];
+}
+
+function getAvatarObjectPosition(photoObj){
+  if(!photoObj) return 'center 25%';
+  // Prefer manually set focalX/focalY from editor
+  if(photoObj.focalX != null && photoObj.focalY != null){
+    return `${Math.round(photoObj.focalX*100)}% ${Math.round(photoObj.focalY*100)}%`;
+  }
+  // Fall back to auto-detected focalY
+  const fy = photoObj.focalY != null ? photoObj.focalY : 0.25;
+  return `center ${Math.round(fy*100)}%`;
+}
+
+function makeAvatar(p,size){
+  const src=mainPhotoSrc(p);
+  if(src){
+    const obj=mainPhotoObj(p);
+    const pos=getAvatarObjectPosition(obj);
+    return`<img src="${src}" class="avatar" style="width:${size}px;height:${size}px;object-position:${pos}" onerror="this.style.display='none'">`;
+  }
+  return`<div class="avatar-placeholder" style="width:${size}px;height:${size}px;font-size:${Math.round(size*.4)}px;color:#e2e8f0">${p.name.charAt(0).toUpperCase()}</div>`;
+}
+
+
+// ── FACE DETECTION & FOCAL POINT ──
+// Detects face position in a photo and returns focalY (0=top, 1=bottom)
+// Uses FaceDetector API if available, else smart fallback via canvas brightness/edge analysis
+
+async function detectFocalPoint(src){
+  return new Promise(resolve => {
+    const img = new Image();
+    img.onload = async () => {
+      const w = img.naturalWidth, h = img.naturalHeight;
+
+      // Try FaceDetector API (Chrome Android, macOS Safari)
+      if(window.FaceDetector){
+        try {
+          const fd = new FaceDetector({fastMode: true, maxDetectedFaces: 3});
+          const faces = await fd.detect(img);
+          if(faces && faces.length > 0){
+            // Use topmost face (usually the main subject)
+            const face = faces.reduce((a,b) => a.boundingBox.top < b.boundingBox.top ? a : b);
+            const bb = face.boundingBox;
+            // focalY = center of face relative to image height
+            const focalY = Math.max(0, Math.min(1, (bb.top + bb.height * 0.4) / h));
+            resolve(focalY);
+            return;
+          }
+        } catch(e){ /* fall through */ }
+      }
+
+      // Fallback: canvas-based skin tone / brightness heuristic
+      // Sample the top half of the image in horizontal bands
+      // Find the band with the most skin-tone-like pixels → likely face
+      try {
+        const SCALE = 0.15; // scale down for speed
+        const cw = Math.max(1, Math.round(w * SCALE));
+        const ch = Math.max(1, Math.round(h * SCALE));
+        const c = document.createElement('canvas');
+        c.width = cw; c.height = ch;
+        const ctx = c.getContext('2d');
+        ctx.drawImage(img, 0, 0, cw, ch);
+        const data = ctx.getImageData(0, 0, cw, ch).data;
+
+        const BANDS = 20;
+        const bandH = Math.max(1, Math.floor(ch / BANDS));
+        let bestBand = 3; // default: ~15% from top
+        let bestScore = -1;
+
+        for(let b = 0; b < BANDS; b++){
+          let skinScore = 0, count = 0;
+          for(let y = b * bandH; y < Math.min(ch, (b+1) * bandH); y++){
+            for(let x = 0; x < cw; x++){
+              const i = (y * cw + x) * 4;
+              const r = data[i], g = data[i+1], bl = data[i+2];
+              // Skin tone heuristic: r > 60, g > 40, b > 20, r > g > b, r-b > 15
+              if(r > 60 && g > 40 && bl > 20 && r > g && g > bl && (r - bl) > 15){
+                skinScore++;
+              }
+              count++;
+            }
+          }
+          const score = count > 0 ? skinScore / count : 0;
+          if(score > bestScore){
+            bestScore = score;
+            bestBand = b;
+          }
+        }
+
+        // Convert best band to focalY, bias slightly upward (forehead is above skin peak)
+        const rawY = (bestBand + 0.5) / BANDS;
+        const focalY = Math.max(0.05, Math.min(0.9, rawY - 0.03));
+        resolve(focalY);
+      } catch(e){
+        resolve(0.25); // safe default: upper quarter
+      }
+    };
+    img.onerror = () => resolve(0.25);
+    img.crossOrigin = 'anonymous';
+    img.src = src;
+  });
+}
+
+// Process a photo object: detect focal point and store it
+async function enrichPhotoWithFocalPoint(photoObj){
+  if(photoObj.focalY != null) return; // already done
+  try {
+    photoObj.focalY = await detectFocalPoint(photoObj.src);
+  } catch(e){
+    photoObj.focalY = 0.25;
+  }
+}
+
+// Run focal point detection on all photos of a person (call after adding photos)
+async function detectFocalPointsForPerson(person){
+  if(!person.photos || !person.photos.length) return;
+  for(const ph of person.photos){
+    await enrichPhotoWithFocalPoint(ph);
+  }
+}
+
+// Run detection on all people (background task, non-blocking)
+async function detectAllFocalPoints(){
+  for(const p of people){
+    if(!p.photos) continue;
+    for(const ph of p.photos){
+      if(ph.focalY == null){
+        await enrichPhotoWithFocalPoint(ph);
+        await new Promise(r => setTimeout(r, 0)); // yield between photos
+      }
+    }
+  }
+  // Save updated focal points
+  await saveData();
+  renderList();
+}
+
+// ── LIST ──
+
+// ── DEBOUNCE for search ──
+let _searchTimer = null;
+function debouncedSearch(){
+  clearTimeout(_searchTimer);
+  _searchTimer = setTimeout(renderList, 200);
+}
+
+// ── FUZZY SEARCH ──
+// Normalize: remove diacritics, lowercase
+function norm(s){ return (s||'').normalize('NFD').replace(/[̀-ͯ]/g,'').toLowerCase().trim(); }
+
+// Levenshtein distance (for short words)
+function levenshtein(a,b){
+  if(!a) return b.length; if(!b) return a.length;
+  const dp=Array.from({length:a.length+1},(_,i)=>Array.from({length:b.length+1},(_,j)=>i||j));
+  for(let i=1;i<=a.length;i++) for(let j=1;j<=b.length;j++)
+    dp[i][j]=a[i-1]===b[j-1]?dp[i-1][j-1]:1+Math.min(dp[i-1][j],dp[i][j-1],dp[i-1][j-1]);
+  return dp[a.length][b.length];
+}
+
+// Trigram similarity (good for longer strings)
+function trigrams(s){ const t=new Set(); for(let i=0;i<s.length-2;i++) t.add(s.slice(i,i+3)); return t; }
+function trigramSim(a,b){
+  if(a.length<3||b.length<3) return a===b?1:0;
+  const ta=trigrams(a), tb=trigrams(b);
+  let inter=0; ta.forEach(t=>{ if(tb.has(t)) inter++; });
+  return 2*inter/(ta.size+tb.size);
+}
+
+// Main fuzzy match: returns score 0–1, higher = better match
+function fuzzyMatch(query, target){
+  const q=norm(query), t=norm(target);
+  if(!q||!t) return 0;
+  // Fast path: exact substring (covers most real searches, no heavy algo needed)
+  if(t.includes(q)) return 1;
+  // Split query words
+  const qParts=q.split(/\s+/), tParts=t.split(/\s+/);
+  // Reversed name/surname order
+  if(qParts.length>1){
+    const rev=qParts.slice().reverse().join(' ');
+    if(t.includes(rev)) return 0.98;
+    // All query words fuzzy-match some target word
+    const allPartsMatch=qParts.every(qw=>tParts.some(tw=>tw.includes(qw)||levenshtein(qw,tw)<=Math.floor(qw.length/4)));
+    if(allPartsMatch) return 0.95;
+  }
+  // Only run expensive algos if query is short enough (perf guard for 12k+ records)
+  if(q.length<=12){
+    // Trigram similarity
+    const ts=trigramSim(q,t);
+    if(ts>0.5) return ts;
+    // Levenshtein — only on individual target words (not full name) for speed
+    const levHit=tParts.some(tw=>{
+      const cmp=tw.slice(0,q.length+2);
+      const lev=levenshtein(q,cmp);
+      return lev<=Math.max(1,Math.floor(q.length/4));
+    });
+    if(levHit) return 0.75;
+  }
+  // Prefix match
+  if(tParts.some(tw=>tw.startsWith(q)||q.startsWith(tw))) return 0.7;
+  return 0;
+}
+
+// Threshold: minimum fuzzy score to show result
+const FUZZY_MIN = 0.45;
+
+function fuzzyMatchPerson(q, p){
+  if(!q) return 1;
+  const fields=[p.name, p.alias, p.profession, p.country];
+  return Math.max(...fields.map(f=>fuzzyMatch(q,f||'')));
+}
+
+function getFiltered(){
+  const q=(document.getElementById('search-input')?.value||'').trim();
+  const fn=(document.getElementById('filt-name')?.value||'').toLowerCase();
+  const fb=(document.getElementById('filt-born')?.value||'').trim();
+  const fc=(document.getElementById('filt-country')?.value||'').toLowerCase();
+  const fp=(document.getElementById('filt-profession')?.value||'').toLowerCase();
+  const fr=parseInt(document.getElementById('filt-rating')?.value||'')||0;
+  
+  return people.filter(p=>{
+    // Main search: fuzzy
+    if(q){
+      const score=fuzzyMatchPerson(q,p);
+      if(score<FUZZY_MIN) return false;
+      p._fuzzyScore=score; // store for potential sorting
+    } else {
+      p._fuzzyScore=undefined;
+    }
+    // Panel filters: strict (these are deliberate precise filters)
+    if(fn&&!norm(p.name).includes(norm(fn)))return false;
+    if(fb){if(!p.born)return false;if(new Date(p.born).getFullYear()!==parseInt(fb))return false;}
+    if(fc&&!norm(p.country||'').includes(norm(fc)))return false;
+    if(fp&&!norm(p.profession||'').includes(norm(fp)))return false;
+    if(fr&&(p.rating||0)<fr)return false;
+    if(bestFilter==='yes'&&!p.best)return false;
+    if(bestFilter==='no'&&p.best)return false;
+    return true;
+  });
+}
+function getSorted(arr){const a=[...arr];// If fuzzy search active, sort by score first
+if(a.length&&a[0]._fuzzyScore!==undefined&&document.getElementById('search-input')?.value.trim()){return a.sort((x,y)=>(y._fuzzyScore||0)-(x._fuzzyScore||0));}
+if(currentSort==='name')return a.sort((x,y)=>x.name.localeCompare(y.name,'cs'));if(currentSort==='rating')return a.sort((x,y)=>(y.rating||0)-(x.rating||0));if(currentSort==='best')return a.sort((x,y)=>(y.best?1:0)-(x.best?1:0));if(currentSort==='born')return a.sort((x,y)=>(x.born||'9999')<(y.born||'9999')?-1:1);return a.sort((x,y)=>y.id-x.id);}
+
+// ── VIRTUAL SCROLL ──
+const PAGE_SIZE = 40; // items per render batch
+let _currentFiltered = [];
+let _renderedCount = 0;
+let _scrollListenerAttached = false;
+
+function makeListItemHtml(p){
+  return `
+    <div class="list-item${selectedIds.has(p.id)?' selected':''}" onclick="${selectMode?`toggleSelectItem(${p.id})`:`openDetail(${p.id})`}" data-id="${p.id}">
+      ${selectMode?`<div class="list-checkbox">${selectedIds.has(p.id)?'<svg width="14" height="14" viewBox="0 0 14 14"><polyline points="2,7 5.5,10.5 12,3" stroke="#020617" stroke-width="2.2" fill="none" stroke-linecap="round" stroke-linejoin="round"/></svg>':''}</div>`:''}
+      ${makeAvatar(p,52)}
+      <div class="list-info">
+        <div class="list-name">${p.name}${p.best?' <span style="color:#f59e0b;font-size:12px">⭐</span>':''}</div>
+        ${p.alias?`<div class="list-alias">"${p.alias}"</div>`:''}
+        <div class="list-meta">
+          <span>${starsHtml(p.rating||0)}</span>
+          ${p.born?`<span style="font-size:11px;color:#475569">${new Date(p.born+'T12:00:00').getFullYear()}</span>`:''}
+          <span style="font-size:11px;color:#475569">${(p.profession||'').split(',')[0]}</span>
+        </div>
+      </div>
+      ${!selectMode&&p.best?'<span class="best-badge">BEST</span>':''}
+      ${!selectMode?'<span class="list-arrow">›</span>':''}
+    </div>`;
+}
+
+function appendNextBatch(){
+  const c = document.getElementById('list-container');
+  if(!c || _renderedCount >= _currentFiltered.length) return;
+  const batch = _currentFiltered.slice(_renderedCount, _renderedCount + PAGE_SIZE);
+  const frag = document.createDocumentFragment();
+  batch.forEach(p => {
+    const div = document.createElement('div');
+    div.innerHTML = makeListItemHtml(p).trim();
+    frag.appendChild(div.firstChild);
+  });
+  // Remove sentinel if exists
+  const sentinel = document.getElementById('scroll-sentinel');
+  if(sentinel) sentinel.remove();
+  c.appendChild(frag);
+  _renderedCount += batch.length;
+  // Add new sentinel if more items remain
+  if(_renderedCount < _currentFiltered.length){
+    const s = document.createElement('div');
+    s.id = 'scroll-sentinel';
+    s.style.height = '1px';
+    c.appendChild(s);
+    _scrollObserver.observe(s);
+  }
+}
+
+// IntersectionObserver triggers next batch when sentinel hits viewport
+const _scrollObserver = new IntersectionObserver(entries => {
+  if(entries[0].isIntersecting) appendNextBatch();
+}, { rootMargin: '200px' });
+
+function renderList(){
+  updateFilterBadge();
+  const filtered = getSorted(getFiltered());
+  _currentFiltered = filtered;
+  _renderedCount = 0;
+  detailNavList = filtered.map(p=>p.id);
+  document.getElementById('count-badge').textContent = people.length;
+  const c = document.getElementById('list-container');
+  const hasF = countFilters() > 0 || !!document.getElementById('search-input').value;
+
+  if(!filtered.length){
+    const q2 = document.getElementById('search-input').value.trim();
+    const webSearchBtn = q2 ? `<button class="btn btn-ghost" style="margin-top:16px;border-color:#38bdf8;color:#38bdf8;font-size:14px" onclick="searchOnWeb('${q2.replace(/'/g,"\'")}')">🌐 Hledat "${q2}" na internetu</button>` : '';
+    c.innerHTML = `<div class="empty"><div class="empty-icon">${hasF?'🔍':'👤'}</div><div class="empty-title">${hasF?'Žádné výsledky':'Žádné záznamy'}</div><div class="empty-sub">${hasF?'Zkus jiné filtry nebo hledej na webu':'Přidej první osobnost'}</div>${webSearchBtn}</div>`;
+    return;
+  }
+
+  const listEl = document.getElementById('list-container');
+  listEl.className = selectMode ? 'select-mode' : '';
+  c.innerHTML = '';
+  appendNextBatch(); // render first PAGE_SIZE items immediately
+  updateSelectBar();
+}
+
+
+// ── DETAIL ──
+function openDetail(id){
+  selectedId=id; const p=people.find(x=>x.id===id); if(!p)return;
+  const bc=p.best?'#d97706':'#38bdf8';
+  const mainSrc=mainPhotoSrc(p);
+
+  // Hero photo (circle)
+  {
+    const photoObj=mainPhotoObj(p);
+    const pos=getAvatarObjectPosition(photoObj);
+    document.getElementById('detail-main-photo').innerHTML=mainSrc
+      ?`<img src="${mainSrc}" class="avatar" style="width:120px;height:120px;border:3px solid ${bc};box-shadow:0 0 30px rgba(${p.best?'217,119,6':'56,189,248'},0.3);object-position:${pos};cursor:zoom-in" onclick="openSinglePhotoLightbox()">`
+      :`<div class="avatar-placeholder" style="width:120px;height:120px;font-size:48px;color:#e2e8f0;margin:0 auto;border:3px solid ${bc}">${p.name.charAt(0)}</div>`;
+  }
+
+  document.getElementById('detail-name').textContent=p.name;
+  const ae=document.getElementById('detail-alias');ae.style.display=p.alias?'':'none';ae.textContent=p.alias?`"${p.alias}"`:' ';
+  renderStars(document.getElementById('detail-stars'),p.rating||0,true,null);
+  document.getElementById('detail-tags').innerHTML=(p.profession||'').split(',').map(t=>`<span class="tag">${t.trim()}</span>`).join('')+(p.country?`<span class="tag tag-blue">${p.country}</span>`:'')+(p.best?`<span class="tag tag-gold">⭐ Best</span>`:'');
+
+  // Info
+  const age=(p.born&&p.died)?(new Date(p.died).getFullYear()-new Date(p.born).getFullYear()):null;
+  let rows='';
+  if(p.born)rows+=`<div class="info-row"><span class="info-label">Narozen/a</span><span class="info-value">${fmtDate(p.born)}</span></div>`;
+  rows+=`<div class="info-row"><span class="info-label">Zemřel/a</span><span class="info-value">${p.died?fmtDate(p.died):'Žije'}</span></div>`;
+  if(age!==null)rows+=`<div class="info-row"><span class="info-label">Věk při úmrtí</span><span class="info-value">${age} let</span></div>`;
+  document.getElementById('detail-info').innerHTML=rows||'<div class="info-row"><span class="info-label">—</span><span class="info-value">—</span></div>';
+
+  // Gallery (only if >1 photos OR has extra photos)
+  const photos=p.photos||[];
+  const gallerySec=document.getElementById('detail-gallery-section');
+  if(photos.length>=1){
+    gallerySec.style.display='';
+    galleryPhotos=photos;
+    galleryIdx=photos.findIndex(x=>x.main)||0;
+    if(galleryIdx<0)galleryIdx=0;
+    renderGallery();
+  } else {
+    gallerySec.style.display='none';
+    galleryPhotos=[];
+  }
+
+  // Notes
+  const ne=document.getElementById('detail-notes');
+  if(p.notes){ne.style.display='';document.getElementById('detail-notes-text').textContent=p.notes;}else{ne.style.display='none';}
+
+  // Links
+  const links=p.links||[];
+  const linksSec=document.getElementById('detail-links-section');
+  const linksList=document.getElementById('detail-links-list');
+  if(links.length){
+    linksSec.style.display='';
+    linksList.innerHTML=links.map(l=>`
+      <a href="${l.url}" target="_blank" rel="noopener noreferrer" class="link-item" onclick="event.stopPropagation()">
+        <span class="link-icon">🔗</span>
+        <div class="link-text">
+          <div class="link-label-text">${l.label||l.url}</div>
+          <div class="link-url-text">${l.url}</div>
+        </div>
+        <span style="color:#334155;font-size:16px">›</span>
+      </a>`).join('');
+  } else { linksSec.style.display='none'; }
+
+  // Nav prev/next
+  const navIdx=detailNavList.indexOf(id);
+  const prevBtn=document.getElementById('detail-prev-btn');
+  const nextBtn=document.getElementById('detail-next-btn');
+  if(prevBtn){prevBtn.disabled=navIdx<=0;}
+  if(nextBtn){nextBtn.disabled=navIdx<0||navIdx>=detailNavList.length-1;}
+  hideDeleteConfirm(); showView('detail');
+}
+
+// ── GALLERY ──
+function renderGallery(){
+  if(!galleryPhotos.length)return;
+  const img=document.getElementById('gallery-main-img');
+  const ph=galleryPhotos[galleryIdx];
+  img.src=ph.src;
+  img.style.objectPosition=''; // contain shows full image, no crop needed
+  document.getElementById('gallery-counter').textContent=`${galleryIdx+1} / ${galleryPhotos.length}`;
+  document.getElementById('gallery-thumbs').innerHTML=galleryPhotos.map((ph,i)=>{
+    const pos=getAvatarObjectPosition(ph);
+    return `<img src="${ph.src}" class="gallery-thumb ${i===galleryIdx?'active':''}" onclick="setGalleryIdx(${i})" style="object-position:${pos}" onerror="this.style.display='none'">`;
+  }).join('');
+  // show/hide nav arrows
+  document.querySelector('.gallery-nav-l').style.display=galleryPhotos.length>1?'':'none';
+  document.querySelector('.gallery-nav-r').style.display=galleryPhotos.length>1?'':'none';
+}
+function galleryNav(dir){galleryIdx=(galleryIdx+dir+galleryPhotos.length)%galleryPhotos.length;renderGallery();}
+function setGalleryIdx(i){galleryIdx=i;renderGallery();}
+
+// ── LIGHTBOX ──
+function openLightbox(){
+  if(!galleryPhotos.length)return;
+  lightboxIdx=galleryIdx;
+  document.getElementById('lightbox-img').src=galleryPhotos[lightboxIdx].src;
+  const nl=document.querySelector('.lightbox-nav-l');
+  const nr=document.querySelector('.lightbox-nav-r');
+  if(nl)nl.style.display=galleryPhotos.length>1?'':'none';
+  if(nr)nr.style.display=galleryPhotos.length>1?'':'none';
+  document.getElementById('lightbox').classList.add('open');
+}
+function closeLightbox(){document.getElementById('lightbox').classList.remove('open');}
+function lightboxNav(dir){
+  if(!galleryPhotos.length)return;
+  lightboxIdx=(lightboxIdx+dir+galleryPhotos.length)%galleryPhotos.length;
+  document.getElementById('lightbox-img').src=galleryPhotos[lightboxIdx].src;
+  const nl=document.querySelector('.lightbox-nav-l');
+  const nr=document.querySelector('.lightbox-nav-r');
+  const show=galleryPhotos.length>1;
+  if(nl)nl.style.display=show?'':'none';
+  if(nr)nr.style.display=show?'':'none';
+}
+
+// Swipe na lightboxu
+let _lbSwipeX=0;
+function lbTouchStart(e){_lbSwipeX=e.touches[0].clientX;}
+function lbTouchMove(e){e.preventDefault();}
+function lbTouchEnd(e){
+  const dx=e.changedTouches[0].clientX-_lbSwipeX;
+  if(Math.abs(dx)>50) lightboxNav(dx<0?1:-1);
+}
+
+// Otevření lightboxu pro profilovou fotku
+function openSinglePhotoLightbox(){
+  const p=people.find(x=>x.id===selectedId);
+  if(!p)return;
+  // Pokud galerie běží, použij ji (správný index)
+  if(galleryPhotos.length>0){ openLightbox(); return; }
+  // Jinak zobraz hlavní fotku
+  const src=mainPhotoSrc(p);
+  if(!src)return;
+  lightboxIdx=0;
+  document.getElementById('lightbox-img').src=src;
+  const nl=document.querySelector('.lightbox-nav-l');
+  const nr=document.querySelector('.lightbox-nav-r');
+  if(nl)nl.style.display='none';
+  if(nr)nr.style.display='none';
+  document.getElementById('lightbox').classList.add('open');
+}
+
+// ── DELETE ──
+function showDeleteConfirm(){const p=people.find(x=>x.id===selectedId);document.getElementById('delete-confirm-text').textContent=`Opravdu smazat ${p?.name}?`;document.getElementById('detail-delete-wrap').style.display='none';document.getElementById('detail-delete-confirm').style.display='';}
+function hideDeleteConfirm(){document.getElementById('detail-delete-wrap').style.display='';document.getElementById('detail-delete-confirm').style.display='none';}
+function deletePerson(){people=people.filter(x=>x.id!==selectedId);saveData();renderList();showView('list');}
+
+// ── FORM PHOTOS ──
+function renderFormPhotos(){
+  const list=document.getElementById('form-photos-list');
+  if(!formPhotos.length){list.innerHTML='';return;}
+  list.innerHTML=formPhotos.map((ph,i)=>{
+    const hasCrop = ph.focalX!=null && ph.focalY!=null;
+    const editing = (window._peEditIdx===i);
+    // Object position for the thumb preview
+    const objPos = hasCrop ? `${Math.round(ph.focalX*100)}% ${Math.round(ph.focalY*100)}%` : 'center 25%';
+    return `
+    <div class="photo-item" style="flex-direction:column;align-items:stretch;padding:0">
+      <div style="display:flex;align-items:center;gap:10px;padding:8px 10px">
+        <img src="${ph.src}" style="width:52px;height:52px;border-radius:8px;object-fit:cover;flex-shrink:0;border:2px solid ${hasCrop?'#38bdf8':'#1e293b'};object-position:${objPos}" onerror="this.style.display='none'">
+        <div style="flex:1;min-width:0">
+          <div class="photo-item-name">Fotka ${i+1}</div>
+          ${ph.main?'<div class="photo-item-main">★ Titulní</div>':''}
+          <div style="font-size:10px;color:${hasCrop?'#38bdf8':'#64748b'};margin-top:2px">${hasCrop?'✓ Pozice nastavena':'Nastav pozici níže'}</div>
+        </div>
+        <button class="btn btn-ghost btn-sm" onclick="peToggle(${i})" style="padding:5px 9px;font-size:14px;flex-shrink:0;border-color:${editing?'#38bdf8':'#1e293b'};color:${editing?'#38bdf8':'#94a3b8'}" title="Upravit pozici">✂️</button>
+        <button class="photo-item-star ${ph.main?'main':''}" onclick="setMainPhoto(${i})" title="Titulní">★</button>
+        <button class="photo-item-del" onclick="removeFormPhoto(${i})">✕</button>
+      </div>
+      ${editing ? `
+      <div style="background:#0a0f1e;border-top:1px solid #1e293b;padding:10px 12px">
+        <div style="font-size:11px;color:#64748b;margin-bottom:8px">Posun X (vodorovně)</div>
+        <input type="range" min="0" max="100" value="${Math.round((ph.focalX??0.5)*100)}"
+          style="width:100%;margin-bottom:10px;accent-color:#38bdf8"
+          oninput="peSetFocal(${i}, +this.value/100, null)">
+        <div style="font-size:11px;color:#64748b;margin-bottom:8px">Posun Y (svisle) — vlevo=vršek, vpravo=spodek</div>
+        <input type="range" min="0" max="100" value="${Math.round((ph.focalY??0.25)*100)}"
+          style="width:100%;margin-bottom:10px;accent-color:#38bdf8"
+          oninput="peSetFocal(${i}, null, +this.value/100)">
+        <div style="display:flex;gap:8px;margin-top:4px">
+          <button class="btn btn-ghost btn-sm" onclick="peSetFocal(${i},0.5,0.2)" style="flex:1;font-size:11px">👤 Tvář</button>
+          <button class="btn btn-ghost btn-sm" onclick="peSetFocal(${i},0.5,0.5)" style="flex:1;font-size:11px">⊙ Střed</button>
+          <button class="btn btn-primary btn-sm" onclick="peToggle(${i})" style="flex:1;font-size:11px">✓ Hotovo</button>
+        </div>
+      </div>` : ''}
+    </div>`;
+  }).join('');
+}
+
+function peToggle(i){
+  window._peEditIdx = (window._peEditIdx===i) ? -1 : i;
+  // Set default focal if not set yet
+  if(window._peEditIdx===i && formPhotos[i] && formPhotos[i].focalX==null){
+    formPhotos[i].focalX=0.5; formPhotos[i].focalY=0.25;
+  }
+  renderFormPhotos();
+}
+
+function peSetFocal(i, fx, fy){
+  const ph=formPhotos[i]; if(!ph) return;
+  if(fx!=null) ph.focalX=Math.max(0,Math.min(1,fx));
+  if(fy!=null) ph.focalY=Math.max(0,Math.min(1,fy));
+  // Update just the thumb and sliders without full re-render
+  const items=document.getElementById('form-photos-list').children;
+  if(!items[i]) return;
+  const thumb=items[i].querySelector('img');
+  if(thumb) thumb.style.objectPosition=`${Math.round(ph.focalX*100)}% ${Math.round(ph.focalY*100)}%`;
+}
+
+function setMainPhoto(i){formPhotos=formPhotos.map((p,j)=>({...p,main:j===i}));renderFormPhotos();}
+function removeFormPhoto(i){formPhotos.splice(i,1);if(formPhotos.length&&!formPhotos.find(x=>x.main))formPhotos[0].main=true;renderFormPhotos();}
+function handlePhotosUpload(e){
+  const files=Array.from(e.target.files);
+  let loaded=0;
+  files.forEach(file=>{
+    const reader=new FileReader();
+    reader.onload=async ev=>{
+      const photo={src:ev.target.result, main:formPhotos.length===0, focalY:null};
+      await enrichPhotoWithFocalPoint(photo);
+      formPhotos.push(photo);
+      loaded++;if(loaded===files.length)renderFormPhotos();
+    };
+    reader.readAsDataURL(file);
+  });
+  e.target.value='';
+}
+function addPhotoByUrl(){
+  const val=document.getElementById('photo-url-val').value.trim();
+  if(!val)return;
+  const photo={src:val,main:formPhotos.length===0,focalY:null};
+  formPhotos.push(photo);
+  enrichPhotoWithFocalPoint(photo).then(()=>renderFormPhotos()); // async, then re-render
+  document.getElementById('photo-url-val').value='';
+  document.getElementById('photo-url-dlg').style.display='none';
+  renderFormPhotos();
+}
+
+// ── FORM LINKS ──
+function renderFormLinks(){
+  const list=document.getElementById('form-links-list');
+  if(!formLinks.length){list.innerHTML='';return;}
+  list.innerHTML=formLinks.map((l,i)=>`
+    <div class="link-form-item">
+      <div class="link-form-row">
+        <input class="link-form-input" placeholder="Popisek (např. Wikipedia)" value="${l.label||''}" oninput="formLinks[${i}].label=this.value">
+        <button class="link-del-btn" onclick="removeFormLink(${i})">✕</button>
+      </div>
+      <div class="link-form-row">
+        <input class="link-form-input" placeholder="https://..." value="${l.url||''}" oninput="formLinks[${i}].url=this.value">
+      </div>
+    </div>`).join('');
+}
+function addLinkField(){formLinks.push({label:'',url:''});renderFormLinks();}
+function removeFormLink(i){formLinks.splice(i,1);renderFormLinks();}
+
+// ── OPEN FORMS ──
+function openNew(){
+  isNew=true;formRating=3;formPhotos=[];formLinks=[];
+  document.getElementById('form-title').textContent='Nová osoba';
+  document.getElementById('form-submit-btn').textContent='✓ Přidat osobu';
+  ['name','alias','profession','country','born','died','notes'].forEach(f=>document.getElementById('f-'+f).value='');
+  document.getElementById('f-best').checked=false;
+  renderFormPhotos();renderFormLinks();
+  renderStars(document.getElementById('form-stars'),formRating,false,v=>{formRating=v;});
+  showView('form');
+}
+function openEdit(){
+  const p=people.find(x=>x.id===selectedId);if(!p)return;
+  isNew=false;formRating=p.rating||0;
+  // migrate old single photo
+  formPhotos=(p.photos&&p.photos.length)?[...p.photos.map(x=>({...x}))]:p.photo?[{src:p.photo,main:true}]:[];
+  formLinks=(p.links&&p.links.length)?[...p.links.map(x=>({...x}))]:(p.website?[{label:'Web',url:p.website}]:[]);
+  document.getElementById('form-title').textContent='Upravit';
+  document.getElementById('form-submit-btn').textContent='✓ Uložit změny';
+  document.getElementById('f-name').value=p.name||'';
+  document.getElementById('f-alias').value=p.alias||'';
+  document.getElementById('f-profession').value=p.profession||'';
+  document.getElementById('f-country').value=p.country||'';
+  document.getElementById('f-born').value=p.born||'';
+  document.getElementById('f-died').value=p.died||'';
+  document.getElementById('f-notes').value=p.notes||'';
+  document.getElementById('f-best').checked=!!p.best;
+  renderFormPhotos();renderFormLinks();
+  renderStars(document.getElementById('form-stars'),formRating,false,v=>{formRating=v;});
+  showView('form');
+}
+function formBack(){showView(isNew?'list':'detail');}
+
+function submitForm(){
+  const name=document.getElementById('f-name').value.trim();if(!name){document.getElementById('f-name').focus();return;}
+  // ensure at least one main photo
+  if(formPhotos.length&&!formPhotos.find(x=>x.main))formPhotos[0].main=true;
+  const data={
+    name, alias:document.getElementById('f-alias').value.trim(),
+    profession:document.getElementById('f-profession').value.trim(),
+    country:document.getElementById('f-country').value.trim(),
+    born:document.getElementById('f-born').value,
+    died:document.getElementById('f-died').value,
+    notes:document.getElementById('f-notes').value.trim(),
+    best:document.getElementById('f-best').checked,
+    rating:formRating,
+    photos:[...formPhotos],
+    links:formLinks.filter(l=>l.url.trim()),
+    // keep legacy fields for compatibility
+    photo:formPhotos.length?(formPhotos.find(x=>x.main)||formPhotos[0]).src:'',
+    website:formLinks.length?formLinks[0].url:''
+  };
+  if(isNew){people.push({...data,id:Date.now()});}
+  else{const i=people.findIndex(x=>x.id===selectedId);if(i>=0)people[i]={...data,id:selectedId};}
+  saveData();renderList();
+  if(isNew){showView('list');}else{openDetail(selectedId);}
+}
+
+
+// ── COUNTRY FLAGS ──
+const COUNTRIES = [
+  ["Afghánistán","🇦🇫"],["Albánie","🇦🇱"],["Alžírsko","🇩🇿"],["Angola","🇦🇴"],["Argentina","🇦🇷"],
+  ["Arménie","🇦🇲"],["Austrálie","🇦🇺"],["Ázerbájdžán","🇦🇿"],["Bahrajn","🇧🇭"],["Bangladéš","🇧🇩"],
+  ["Belgie","🇧🇪"],["Bělorusko","🇧🇾"],["Bolívie","🇧🇴"],["Bosna a Hercegovina","🇧🇦"],["Botswana","🇧🇼"],
+  ["Brazílie","🇧🇷"],["Bulharsko","🇧🇬"],["Chile","🇨🇱"],["Čína","🇨🇳"],["Česko","🇨🇿"],
+  ["Dánsko","🇩🇰"],["Egypt","🇪🇬"],["Ekvádor","🇪🇨"],["Estonsko","🇪🇪"],["Etiopie","🇪🇹"],
+  ["Filipíny","🇵🇭"],["Finsko","🇫🇮"],["Francie","🇫🇷"],["Ghana","🇬🇭"],["Gruzie","🇬🇪"],
+  ["Guatemala","🇬🇹"],["Indie","🇮🇳"],["Indonésie","🇮🇩"],["Irák","🇮🇶"],["Írán","🇮🇷"],
+  ["Irsko","🇮🇪"],["Island","🇮🇸"],["Izrael","🇮🇱"],["Itálie","🇮🇹"],["Japonsko","🇯🇵"],
+  ["Jemen","🇾🇪"],["Jihoafrická republika","🇿🇦"],["Jordánsko","🇯🇴"],["Kambodža","🇰🇭"],["Kamerun","🇨🇲"],
+  ["Kanada","🇨🇦"],["Kazachstán","🇰🇿"],["Keňa","🇰🇪"],["Kolumbie","🇨🇴"],["Korejská republika","🇰🇷"],
+  ["Kosovo","🇽🇰"],["Kostarika","🇨🇷"],["Kuba","🇨🇺"],["Kuvajt","🇰🇼"],["Kypr","🇨🇾"],
+  ["Kyrgyzstán","🇰🇬"],["Laos","🇱🇦"],["Litva","🇱🇹"],["Lotyšsko","🇱🇻"],["Libanon","🇱🇧"],
+  ["Libye","🇱🇾"],["Lucembursko","🇱🇺"],["Maďarsko","🇭🇺"],["Malajsie","🇲🇾"],["Mali","🇲🇱"],
+  ["Malta","🇲🇹"],["Maroko","🇲🇦"],["Mexiko","🇲🇽"],["Moldavsko","🇲🇩"],["Mongolsko","🇲🇳"],
+  ["Mozambik","🇲🇿"],["Myanmar","🇲🇲"],["Namibie","🇳🇦"],["Nepál","🇳🇵"],["Německo","🇩🇪"],
+  ["Niger","🇳🇪"],["Nigérie","🇳🇬"],["Nikaragua","🇳🇮"],["Norsko","🇳🇴"],["Nový Zéland","🇳🇿"],
+  ["Omán","🇴🇲"],["Pákistán","🇵🇰"],["Panama","🇵🇦"],["Paraguay","🇵🇾"],["Peru","🇵🇪"],
+  ["Polsko","🇵🇱"],["Portugalsko","🇵🇹"],["Rakousko","🇦🇹"],["Rumunsko","🇷🇴"],["Rusko","🇷🇺"],
+  ["Rwanda","🇷🇼"],["Řecko","🇬🇷"],["Saúdská Arábie","🇸🇦"],["Senegal","🇸🇳"],["Severní Korea","🇰🇵"],
+  ["Severní Makedonie","🇲🇰"],["Slovensko","🇸🇰"],["Slovinsko","🇸🇮"],["Somálsko","🇸🇴"],["Srbsko","🇷🇸"],
+  ["Súdán","🇸🇩"],["Surinam","🇸🇷"],["Sýrie","🇸🇾"],["Švédsko","🇸🇪"],["Švýcarsko","🇨🇭"],
+  ["Tádžikistán","🇹🇯"],["Tanzanie","🇹🇿"],["Thajsko","🇹🇭"],["Tunisko","🇹🇳"],["Turecko","🇹🇷"],
+  ["Turkmenistán","🇹🇲"],["Uganda","🇺🇬"],["Ukrajina","🇺🇦"],["Uruguay","🇺🇾"],["USA","🇺🇸"],
+  ["Uzbekistán","🇺🇿"],["Venezuela","🇻🇪"],["Vietnam","🇻🇳"],["Zambie","🇿🇲"],["Zimbabwe","🇿🇼"],
+  // English names
+  ["Afghanistan","🇦🇫"],["Albania","🇦🇱"],["Algeria","🇩🇿"],["Argentina","🇦🇷"],["Armenia","🇦🇲"],
+  ["Australia","🇦🇺"],["Austria","🇦🇹"],["Azerbaijan","🇦🇿"],["Belarus","🇧🇾"],["Belgium","🇧🇪"],
+  ["Bolivia","🇧🇴"],["Bosnia","🇧🇦"],["Brazil","🇧🇷"],["Bulgaria","🇧🇬"],["Cambodia","🇰🇭"],
+  ["Canada","🇨🇦"],["Chile","🇨🇱"],["China","🇨🇳"],["Colombia","🇨🇴"],["Croatia","🇭🇷"],
+  ["Cuba","🇨🇺"],["Cyprus","🇨🇾"],["Czech Republic","🇨🇿"],["Czechia","🇨🇿"],["Denmark","🇩🇰"],
+  ["Ecuador","🇪🇨"],["Egypt","🇪🇬"],["Estonia","🇪🇪"],["Ethiopia","🇪🇹"],["Finland","🇫🇮"],
+  ["France","🇫🇷"],["Georgia","🇬🇪"],["Germany","🇩🇪"],["Ghana","🇬🇭"],["Greece","🇬🇷"],
+  ["Hungary","🇭🇺"],["Iceland","🇮🇸"],["India","🇮🇳"],["Indonesia","🇮🇩"],["Iran","🇮🇷"],
+  ["Iraq","🇮🇶"],["Ireland","🇮🇪"],["Israel","🇮🇱"],["Italy","🇮🇹"],["Japan","🇯🇵"],
+  ["Jordan","🇯🇴"],["Kazakhstan","🇰🇿"],["Kenya","🇰🇪"],["Kosovo","🇽🇰"],["Kuwait","🇰🇼"],
+  ["Latvia","🇱🇻"],["Lebanon","🇱🇧"],["Libya","🇱🇾"],["Lithuania","🇱🇹"],["Luxembourg","🇱🇺"],
+  ["Malaysia","🇲🇾"],["Mexico","🇲🇽"],["Moldova","🇲🇩"],["Mongolia","🇲🇳"],["Morocco","🇲🇦"],
+  ["Mozambique","🇲🇿"],["Myanmar","🇲🇲"],["Namibia","🇳🇦"],["Nepal","🇳🇵"],["Netherlands","🇳🇱"],
+  ["New Zealand","🇳🇿"],["Nicaragua","🇳🇮"],["Nigeria","🇳🇬"],["Norway","🇳🇴"],["Oman","🇴🇲"],
+  ["Pakistan","🇵🇰"],["Panama","🇵🇦"],["Paraguay","🇵🇾"],["Peru","🇵🇪"],["Philippines","🇵🇭"],
+  ["Poland","🇵🇱"],["Portugal","🇵🇹"],["Romania","🇷🇴"],["Russia","🇷🇺"],["Rwanda","🇷🇼"],
+  ["Saudi Arabia","🇸🇦"],["Senegal","🇸🇳"],["Serbia","🇷🇸"],["Slovakia","🇸🇰"],["Slovenia","🇸🇮"],
+  ["Somalia","🇸🇴"],["South Africa","🇿🇦"],["South Korea","🇰🇷"],["Spain","🇪🇸"],["Sudan","🇸🇩"],
+  ["Sweden","🇸🇪"],["Switzerland","🇨🇭"],["Syria","🇸🇾"],["Taiwan","🇹🇼"],["Tajikistan","🇹🇯"],
+  ["Tanzania","🇹🇿"],["Thailand","🇹🇭"],["Tunisia","🇹🇳"],["Turkey","🇹🇷"],["Turkmenistan","🇹🇲"],
+  ["Uganda","🇺🇬"],["Ukraine","🇺🇦"],["United Kingdom","🇬🇧"],["UK","🇬🇧"],["United States","🇺🇸"],
+  ["Uruguay","🇺🇾"],["Uzbekistan","🇺🇿"],["Venezuela","🇻🇪"],["Vietnam","🇻🇳"],["Zambia","🇿🇲"],
+  ["Zimbabwe","🇿🇼"],["Španělsko","🇪🇸"],["Chorvatsko","🇭🇷"],["Nizozemsko","🇳🇱"],["Taiwan","🇹🇼"],
+  ["Velká Británie","🇬🇧"],["Anglie","🇬🇧"],["Skotsko","🇬🇧"],["Wales","🇬🇧"],["England","🇬🇧"],
+  ["Scotland","🇬🇧"]
+];
+
+function getFlagForCountry(text){
+  const t=text.trim().toLowerCase();
+  for(const [name,flag] of COUNTRIES){
+    if(t===name.toLowerCase())return flag;
+  }
+  // partial match
+  for(const [name,flag] of COUNTRIES){
+    if(t.includes(name.toLowerCase())||name.toLowerCase().includes(t))return flag;
+  }
+  return null;
+}
+
+function onCountryInput(el){
+  const val=el.value;
+  const sug=document.getElementById('country-suggestions');
+  const q=val.trim().toLowerCase();
+  if(!q){sug.style.display='none';return;}
+  // check if already has flag emoji
+  if([...val].some(c=>c.codePointAt(0)>=127462&&c.codePointAt(0)<=127487)){sug.style.display='none';return;}
+  const matches=COUNTRIES.filter(([n])=>n.toLowerCase().startsWith(q)||n.toLowerCase().includes(q)).slice(0,8);
+  if(!matches.length){sug.style.display='none';return;}
+  sug.style.display='block';
+  sug.innerHTML=matches.map(([name,flag])=>
+    `<div onclick="selectCountry('${flag} ${name}')" style="padding:10px 14px;cursor:pointer;font-size:14px;border-bottom:1px solid #334155;display:flex;align-items:center;gap:8px" onmouseenter="this.style.background='#334155'" onmouseleave="this.style.background=''">${flag} ${name}</div>`
+  ).join('');
+}
+
+function selectCountry(val){
+  document.getElementById('f-country').value=val;
+  document.getElementById('country-suggestions').style.display='none';
+}
+
+// close suggestions on outside click
+document.addEventListener('click',e=>{
+  if(!e.target.closest('#f-country')&&!e.target.closest('#country-suggestions')){
+    const s=document.getElementById('country-suggestions');
+    if(s)s.style.display='none';
+  }
+});
+
+
+// ── MULTI-SELECT ──
+function toggleSelectMode(){
+  selectMode=!selectMode;
+  selectedIds.clear();
+  const btn=document.getElementById('select-mode-btn');
+  if(btn)btn.style.color=selectMode?'#38bdf8':'';
+  if(btn)btn.style.borderColor=selectMode?'#38bdf8':'';
+  renderList();
+}
+function toggleSelectItem(id){
+  if(selectedIds.has(id))selectedIds.delete(id);
+  else selectedIds.add(id);
+  renderList();
+}
+function selectAll(){
+  const filtered=getSorted(getFiltered());
+  if(selectedIds.size===filtered.length){selectedIds.clear();}
+  else{filtered.forEach(p=>selectedIds.add(p.id));}
+  renderList();
+}
+function updateSelectBar(){
+  const bar=document.getElementById('select-bar');
+  const label=document.getElementById('select-count-label');
+  if(!bar)return;
+  bar.classList.toggle('visible',selectMode);
+  if(label)label.textContent=selectedIds.size===0?'Nic nevybráno':`${selectedIds.size} vybráno`;
+  const delBtn=document.getElementById('select-delete-btn');
+  if(delBtn)delBtn.disabled=selectedIds.size===0;
+}
+function deleteSelected(){
+  if(!selectedIds.size)return;
+  const names=people.filter(p=>selectedIds.has(p.id)).map(p=>p.name);
+  if(!confirm(`Smazat ${selectedIds.size} ${selectedIds.size===1?'osobu':selectedIds.size<5?'osoby':'osob'}?\n${names.slice(0,5).join(', ')}${names.length>5?'...':''}`))return;
+  people=people.filter(p=>!selectedIds.has(p.id));
+  selectedIds.clear();
+  selectMode=false;
+  const btn=document.getElementById('select-mode-btn');
+  if(btn){btn.style.color='';btn.style.borderColor='';}
+  saveData();renderList();
+}
+
+// ── DETAIL NAVIGATION ──
+function navDetail(dir){
+  const idx=detailNavList.indexOf(selectedId);
+  if(idx<0)return;
+  const newIdx=idx+dir;
+  if(newIdx<0||newIdx>=detailNavList.length)return;
+  openDetail(detailNavList[newIdx]);
+}
+
+
+// ── APP SETTINGS ──
+const SETTINGS_KEY = 'osobnosti_settings';
+const PRESET_ICONS = ['👤','🌟','🎭','🏆','🎬','🎵','📚','⚽','🔬','🎨','💼','🦁','🌍','👑','🔥','💎','🦅','⚡','🎯','🧠'];
+const PRESET_COLORS = [
+  {name:'Modrá',value:'#38bdf8'},{name:'Fialová',value:'#a78bfa'},{name:'Zelená',value:'#34d399'},
+  {name:'Oranžová',value:'#fb923c'},{name:'Růžová',value:'#f472b6'},{name:'Žlutá',value:'#fbbf24'},
+  {name:'Červená',value:'#f87171'},{name:'Tyrkysová',value:'#22d3ee'},{name:'Limetková',value:'#a3e635'},
+  {name:'Bílá',value:'#e2e8f0'}
+];
+
+let appSettings = { name:'Osobnosti', icon:'👤', color:'#38bdf8' };
+let settingsDraft = {};
+
+function loadSettings(){
+  try {
+    const raw = localStorage.getItem(SETTINGS_KEY);
+    if(raw) appSettings = {...appSettings, ...JSON.parse(raw)};
+  } catch {}
+  applySettings();
+}
+
+function applySettings(){
+  // Header title & icon
+  const titleEl = document.getElementById('app-header-title');
+  const iconEl = document.getElementById('app-header-icon');
+  const labelEl = document.getElementById('app-header-label');
+  if(titleEl) titleEl.textContent = appSettings.name || 'Osobnosti';
+  if(iconEl){
+    if(appSettings.iconImg){
+      iconEl.innerHTML = `<img src="${appSettings.iconImg}" style="width:28px;height:28px;border-radius:6px;object-fit:cover;margin-right:6px;vertical-align:middle">`;
+    } else {
+      iconEl.textContent = appSettings.icon ? appSettings.icon + ' ' : '';
+    }
+  }
+  // Accent color via CSS variable
+  document.documentElement.style.setProperty('--accent', appSettings.color || '#38bdf8');
+  // Apply color to CSS elements dynamically
+  const style = document.getElementById('accent-style') || (() => {
+    const s = document.createElement('style'); s.id='accent-style'; document.head.appendChild(s); return s;
+  })();
+  const col = appSettings.color || '#38bdf8';
+  // Parse hex to rgb for rgba usage
+  const r=parseInt(col.slice(1,3),16), g=parseInt(col.slice(3,5),16), b=parseInt(col.slice(5,7),16);
+  style.textContent = `
+    .btn-primary { background: ${col} !important; }
+    .chip.active { background: rgba(${r},${g},${b},0.15) !important; border-color: ${col} !important; color: ${col} !important; }
+    .search-input:focus, .form-input:focus, .filter-input:focus { border-color: ${col} !important; }
+    .tag-blue { color: ${col} !important; border-left-color: ${col} !important; }
+    .filter-btn.active { border-color: ${col} !important; color: ${col} !important; }
+    .n-badge { background: ${col} !important; }
+    .header-label { color: ${col} !important; }
+    .detail-alias { color: ${col} !important; }
+    .gallery-thumb.active { border-color: ${col} !important; }
+    .link-item { color: ${col} !important; }
+    .photo-upload-btn { background: ${col} !important; }
+    .settings-section-title { color: ${col} !important; }
+  `;
+  // Page title
+  document.title = appSettings.name || 'Osobnosti';
+}
+
+function openSettings(){
+  settingsDraft = {...appSettings};
+  document.getElementById('settings-name-input').value = appSettings.name || '';
+  document.getElementById('settings-preview-name').textContent = appSettings.name || 'Osobnosti';
+  updateSettingsIconPreview();
+
+  // Render icon grid
+  const ig = document.getElementById('icon-grid');
+  const curIcon = settingsDraft.icon !== undefined ? settingsDraft.icon : appSettings.icon;
+  ig.innerHTML = PRESET_ICONS.map(em =>
+    `<div class="icon-option${curIcon===em?' selected':''}" onclick="selectIcon('${em}')">${em}</div>`
+  ).join('');
+
+  // Render color grid
+  const cg = document.getElementById('color-grid');
+  cg.innerHTML = PRESET_COLORS.map(col =>
+    `<div class="color-option${appSettings.color===col.value?' selected':''}" style="background:${col.value}" onclick="selectColor('${col.value}')" title="${col.name}"></div>`
+  ).join('');
+
+  updateSecurityUI();
+  showView('settings');
+}
+
+function selectIcon(em){
+  settingsDraft.icon = em;
+  settingsDraft.iconImg = null;
+  updateSettingsIconPreview();
+  document.querySelectorAll('.icon-option').forEach(el => el.classList.toggle('selected', el.textContent.trim()===em));
+  // reset upload preview
+  document.getElementById('icon-upload-preview-content').innerHTML = '📷';
+  document.getElementById('icon-file-input').value = '';
+}
+
+function handleIconImageUpload(e){
+  const file = e.target.files[0];
+  if(!file) return;
+  // Resize & crop to square via canvas
+  const img = new Image();
+  const reader = new FileReader();
+  reader.onload = ev => {
+    img.onload = () => {
+      const canvas = document.createElement('canvas');
+      const size = 128;
+      canvas.width = size; canvas.height = size;
+      const ctx = canvas.getContext('2d');
+      // crop center square
+      const side = Math.min(img.width, img.height);
+      const sx = (img.width - side) / 2;
+      const sy = (img.height - side) / 2;
+      ctx.drawImage(img, sx, sy, side, side, 0, 0, size, size);
+      const dataUrl = canvas.toDataURL('image/jpeg', 0.85);
+      settingsDraft.iconImg = dataUrl;
+      settingsDraft.icon = null;
+      updateSettingsIconPreview();
+      document.querySelectorAll('.icon-option').forEach(el => el.classList.remove('selected'));
+    };
+    img.src = ev.target.result;
+  };
+  reader.readAsDataURL(file);
+}
+
+function updateSettingsIconPreview(){
+  const iconImg = settingsDraft.iconImg !== undefined ? settingsDraft.iconImg : appSettings.iconImg;
+  const icon = settingsDraft.icon !== undefined ? settingsDraft.icon : appSettings.icon;
+  const previewEl = document.getElementById('settings-preview-icon');
+  const uploadPrev = document.getElementById('icon-upload-preview-content');
+  if(iconImg){
+    previewEl.innerHTML = `<img src="${iconImg}" style="width:100%;height:100%;object-fit:cover;border-radius:14px">`;
+    if(uploadPrev) uploadPrev.innerHTML = `<img src="${iconImg}" style="width:100%;height:100%;object-fit:cover">`;
+  } else {
+    previewEl.innerHTML = icon || '👤';
+    if(uploadPrev) uploadPrev.innerHTML = '📷';
+  }
+}
+
+function selectColor(val){
+  settingsDraft.color = val;
+  document.querySelectorAll('.color-option').forEach(el => el.classList.toggle('selected', el.style.background===val||el.getAttribute('onclick')===`selectColor('${val}')`));
+}
+
+document.addEventListener('input', e => {
+  // (emoji custom input removed - now using image upload)
+  if(e.target.id === 'settings-name-input'){
+    settingsDraft.name = e.target.value.trim() || 'Osobnosti';
+  }
+});
+
+function saveSettings(){
+  if(settingsDraft.name !== undefined) appSettings.name = settingsDraft.name || 'Osobnosti';
+  if(settingsDraft.icon !== undefined) appSettings.icon = settingsDraft.icon;
+  if(settingsDraft.iconImg !== undefined) appSettings.iconImg = settingsDraft.iconImg;
+  // if image chosen, clear emoji icon
+  if(appSettings.iconImg) appSettings.icon = null;
+  if(settingsDraft.color !== undefined) appSettings.color = settingsDraft.color;
+  try { localStorage.setItem(SETTINGS_KEY, JSON.stringify(appSettings)); } catch {}
+  applySettings();
+  settingsDraft = {};
+  showView('list');
+}
+
+
+// ════ LOCK / PIN / BIOMETRIC ════
+const LOCK_KEY = 'osobnosti_lock';
+let lockState = { pin: null };
+let pinBuffer = '';
+let pinSetupBuffer = '';
+let pinSetupStep = 0; // 0=enter new, 1=confirm
+let pinSetupFirst = '';
+let isLocked = true;
+
+function loadLockState(){
+  try { const r=localStorage.getItem(LOCK_KEY); if(r) lockState={...lockState,...JSON.parse(r)}; } catch{}
+}
+function saveLockState(){
+  try { localStorage.setItem(LOCK_KEY, JSON.stringify(lockState)); } catch{}
+}
+
+function initLockScreen(){
+  const nameEl = document.getElementById('lock-app-name-el');
+  const iconEl = document.getElementById('lock-icon-content');
+  const iconWrap = document.getElementById('lock-app-icon-el');
+  if(nameEl) nameEl.textContent = appSettings.name || 'Osobnosti';
+  if(iconEl){
+    if(appSettings.iconImg){
+      iconWrap.innerHTML = `<img src="${appSettings.iconImg}" style="width:100%;height:100%;object-fit:cover">`;
+    } else {
+      iconEl.textContent = appSettings.icon || '👤';
+    }
+  }
+
+  const hasPin = !!lockState.pin;
+  const lockScreenEl = document.getElementById('lock-screen');
+
+  if(hasPin){
+    isLocked = true;
+    if(lockScreenEl) lockScreenEl.style.display = 'flex';
+  } else {
+    isLocked = false;
+    if(lockScreenEl) lockScreenEl.style.display = 'none';
+  }
+}
+
+function unlock(){
+  isLocked = false;
+  document.getElementById('lock-screen').style.display = 'none';
+  pinBuffer = '';
+  updatePinDots('pin-dots', 0);
+  showView('list');
+}
+
+// ── PIN ENTRY ──
+function pinPress(digit){
+  if(pinBuffer.length >= 4) return;
+  pinBuffer += digit;
+  updatePinDots('pin-dots', pinBuffer.length);
+  if(pinBuffer.length === 4){
+    setTimeout(()=>{
+      // Hash compare
+      if(hashPin(pinBuffer) === lockState.pin){
+        unlock();
+      } else {
+        // Shake dots
+        for(let i=0;i<4;i++){
+          const d=document.getElementById('pd'+i);
+          if(d){d.classList.add('error');setTimeout(()=>d.classList.remove('error'),500);}
+        }
+        document.getElementById('lock-wrong-msg').classList.add('visible');
+        setTimeout(()=>{
+          document.getElementById('lock-wrong-msg').classList.remove('visible');
+          pinBuffer='';
+          updatePinDots('pin-dots',0);
+        }, 900);
+      }
+    }, 80);
+  }
+}
+
+function pinBackspace(){
+  if(pinBuffer.length>0){ pinBuffer=pinBuffer.slice(0,-1); updatePinDots('pin-dots',pinBuffer.length); }
+}
+
+function updatePinDots(containerId, count){
+  const prefix = containerId==='pin-dots' ? 'pd' : 'spd';
+  for(let i=0;i<4;i++){
+    const d=document.getElementById(prefix+i);
+    if(d) d.classList.toggle('filled', i<count);
+  }
+}
+// ── HASH ──
+function hashPin(pin){
+  let h=5381;
+  for(let i=0;i<pin.length;i++) h=((h<<5)+h)+pin.charCodeAt(i)|0;
+  return h.toString(36)+'x'+pin.split('').reduce((a,d)=>a^d.charCodeAt(0),0xAB).toString(16);
+}
+
+// ── PIN SETUP ──
+function openPinSetup(){
+  pinSetupBuffer=''; pinSetupStep=0; pinSetupFirst='';
+  document.getElementById('pin-setup-title').textContent = 'Nastav nový PIN';
+  document.getElementById('pin-setup-subtitle').textContent = 'Zadej 4místný PIN';
+  document.getElementById('pin-remove-btn').style.display = lockState.pin ? '' : 'none';
+  updatePinDots('pin-setup-dots',0);
+  document.getElementById('pin-setup-modal').style.display='flex';
+}
+
+function pinSetupPress(digit){
+  if(pinSetupBuffer.length>=4) return;
+  pinSetupBuffer+=digit;
+  updatePinDots('pin-setup-dots', pinSetupBuffer.length);
+  if(pinSetupBuffer.length===4){
+    setTimeout(()=>{
+      if(pinSetupStep===0){
+        pinSetupFirst=pinSetupBuffer;
+        pinSetupBuffer='';
+        pinSetupStep=1;
+        document.getElementById('pin-setup-title').textContent='Potvrď PIN';
+        document.getElementById('pin-setup-subtitle').textContent='Zadej PIN znovu';
+        updatePinDots('pin-setup-dots',0);
+      } else {
+        if(pinSetupBuffer===pinSetupFirst){
+          lockState.pin=hashPin(pinSetupBuffer);
+          saveLockState();
+          document.getElementById('pin-setup-modal').style.display='none';
+          updateSecurityUI();
+          alert('PIN byl nastaven! ✓');
+        } else {
+          for(let i=0;i<4;i++){
+            const d=document.getElementById('spd'+i);
+            if(d){d.classList.add('error');setTimeout(()=>d.classList.remove('error'),500);}
+          }
+          setTimeout(()=>{
+            pinSetupBuffer=''; pinSetupStep=0; pinSetupFirst='';
+            document.getElementById('pin-setup-title').textContent='Nastav nový PIN';
+            document.getElementById('pin-setup-subtitle').textContent='PINy se neshodují, zkus znovu';
+            updatePinDots('pin-setup-dots',0);
+          },900);
+        }
+      }
+    },80);
+  }
+}
+
+function pinSetupBackspace(){
+  if(pinSetupBuffer.length>0){ pinSetupBuffer=pinSetupBuffer.slice(0,-1); updatePinDots('pin-setup-dots',pinSetupBuffer.length); }
+}
+
+function pinSetupCancel(){
+  document.getElementById('pin-setup-modal').style.display='none';
+  pinSetupBuffer=''; pinSetupStep=0;
+}
+
+function removePinConfirm(){
+  if(confirm('Opravdu odebrat PIN ochranu?')){
+    lockState.pin=null;
+    saveLockState();
+    document.getElementById('pin-setup-modal').style.display='none';
+    updateSecurityUI();
+  }
+}
+
+
+
+function updateSecurityUI(){
+  const hasPin=!!lockState.pin;
+  const label=document.getElementById('pin-status-label');
+  if(label) label.textContent=hasPin?'Nastaven ✓':'Není nastaven';
+}
+
+
+
+// ── GLOBAL LINKS ──
+const GLOBAL_LINKS_KEY = 'osobnosti_global_links';
+let globalLinks = []; // [{id, label, url, category}]
+let glmEditId = null;
+
+async function loadGlobalLinks(){
+  try {
+    let stored = await idbGet(GLOBAL_LINKS_KEY);
+    if(stored === undefined){
+      try{ const ls=localStorage.getItem(GLOBAL_LINKS_KEY); if(ls) stored=JSON.parse(ls); }catch{}
+    }
+    globalLinks = stored || [];
+  } catch(e){ globalLinks = []; }
+}
+
+async function saveGlobalLinks(){
+  try { await idbSet(GLOBAL_LINKS_KEY, globalLinks); } catch(e){ console.warn('saveGlobalLinks error',e); }
+}
+
+function renderGlobalLinks(){
+  const container = document.getElementById('global-links-container');
+  if(!container) return;
+
+  if(!globalLinks.length){
+    container.innerHTML = `<div class="empty"><div class="empty-icon">🔗</div><div class="empty-title">Žádné odkazy</div><div class="empty-sub">Přidej první webový odkaz</div></div>`;
+    return;
+  }
+
+  // Group by category
+  const cats = {};
+  globalLinks.forEach(l => {
+    const cat = l.category || 'Ostatní';
+    if(!cats[cat]) cats[cat] = [];
+    cats[cat].push(l);
+  });
+
+  let html = '';
+  for(const [cat, links] of Object.entries(cats)){
+    html += `<div style="font-size:10px;letter-spacing:2px;color:#38bdf8;font-weight:700;font-family:monospace;text-transform:uppercase;margin:18px 0 8px">${cat}</div>`;
+    links.forEach(l => {
+      const favicon = `https://www.google.com/s2/favicons?domain=${encodeURIComponent(l.url)}&sz=32`;
+      const displayUrl = l.url.replace(/^https?:\/\//, '').replace(/\/$/, '');
+      html += `
+      <div style="display:flex;align-items:center;gap:12px;background:#0f172a;border:1px solid #1e293b;border-radius:12px;padding:12px 14px;margin-bottom:8px">
+        <img src="${favicon}" onerror="this.src='data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 32 32%22><text y=%2226%22 font-size=%2226%22>🔗</text></svg>'" style="width:28px;height:28px;border-radius:6px;flex-shrink:0">
+        <div style="flex:1;min-width:0" onclick="window.open('${l.url}','_blank')" style="cursor:pointer">
+          <div style="font-weight:700;font-size:14px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;cursor:pointer" onclick="window.open('${l.url}','_blank')">${l.label||displayUrl}</div>
+          <div style="font-size:11px;color:#475569;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${displayUrl}</div>
+        </div>
+        <a href="${l.url}" target="_blank" style="background:#1e3a5f;color:#38bdf8;border:none;border-radius:8px;padding:7px 12px;font-size:13px;font-weight:700;text-decoration:none;flex-shrink:0">Otevřít</a>
+        <button onclick="editGlobalLink(${l.id})" style="background:transparent;border:none;color:#475569;font-size:18px;cursor:pointer;padding:4px;flex-shrink:0">✏️</button>
+        <button onclick="deleteGlobalLink(${l.id})" style="background:transparent;border:none;color:#475569;font-size:18px;cursor:pointer;padding:4px;flex-shrink:0">🗑</button>
+      </div>`;
+    });
+  }
+  container.innerHTML = html;
+
+  // Update datalist for categories
+  const dl = document.getElementById('glm-cat-list');
+  if(dl){
+    const existingCats = [...new Set(globalLinks.map(l=>l.category).filter(Boolean))];
+    dl.innerHTML = existingCats.map(c=>`<option value="${c}">`).join('');
+  }
+}
+
+function openAddGlobalLink(){
+  glmEditId = null;
+  document.getElementById('glm-title').textContent = 'Přidat odkaz';
+  document.getElementById('glm-label').value = '';
+  document.getElementById('glm-url').value = '';
+  document.getElementById('glm-cat').value = '';
+  document.getElementById('global-link-modal').style.display = 'flex';
+  setTimeout(()=>document.getElementById('glm-label').focus(), 100);
+}
+
+function editGlobalLink(id){
+  const link = globalLinks.find(l=>l.id===id);
+  if(!link) return;
+  glmEditId = id;
+  document.getElementById('glm-title').textContent = 'Upravit odkaz';
+  document.getElementById('glm-label').value = link.label || '';
+  document.getElementById('glm-url').value = link.url || '';
+  document.getElementById('glm-cat').value = link.category || '';
+  document.getElementById('global-link-modal').style.display = 'flex';
+}
+
+function closeAddGlobalLink(){
+  document.getElementById('global-link-modal').style.display = 'none';
+  glmEditId = null;
+}
+
+async function saveGlobalLink(){
+  const label = document.getElementById('glm-label').value.trim();
+  let url = document.getElementById('glm-url').value.trim();
+  const category = document.getElementById('glm-cat').value.trim();
+  if(!url){ alert('Zadej URL adresu.'); return; }
+  if(!/^https?:\/\//i.test(url)) url = 'https://' + url;
+  if(glmEditId !== null){
+    const idx = globalLinks.findIndex(l=>l.id===glmEditId);
+    if(idx>=0) globalLinks[idx] = {...globalLinks[idx], label: label||url, url, category};
+  } else {
+    globalLinks.push({ id: Date.now() + Math.random(), label: label||url, url, category });
+  }
+  await saveGlobalLinks();
+  closeAddGlobalLink();
+  renderGlobalLinks();
+}
+
+async function deleteGlobalLink(id){
+  if(!confirm('Smazat tento odkaz?')) return;
+  globalLinks = globalLinks.filter(l=>l.id!==id);
+  await saveGlobalLinks();
+  renderGlobalLinks();
+}
+
+
+// ── WEB SEARCH ──
+const SEARCH_ENGINES = [
+  { id:'google',   label:'Google',    icon:'🔵', url: q => `https://www.google.com/search?q=${encodeURIComponent(q)}` },
+  { id:'wiki',     label:'Wikipedie', icon:'📖', url: q => `https://cs.wikipedia.org/wiki/Special:Search?search=${encodeURIComponent(q)}` },
+  { id:'yt',       label:'YouTube',   icon:'▶️', url: q => `https://www.youtube.com/results?search_query=${encodeURIComponent(q)}` },
+  { id:'images',   label:'Obrázky',   icon:'🖼️', url: q => `https://www.google.com/search?tbm=isch&q=${encodeURIComponent(q)}` },
+];
+
+function searchOnWeb(query){
+  if(!query) return;
+  showSearchEngineSheet(query);
+}
+
+function searchPersonOnWeb(){
+  const p = people.find(x => x.id === selectedId);
+  if(!p) return;
+  const query = p.name + (p.profession ? ' ' + p.profession.split(',')[0].trim() : '');
+  showSearchEngineSheet(query);
+}
+
+function showSearchEngineSheet(query){
+  // Remove old sheet if exists
+  const old = document.getElementById('web-search-sheet');
+  if(old) old.remove();
+
+  const sheet = document.createElement('div');
+  sheet.id = 'web-search-sheet';
+  sheet.style.cssText = 'position:fixed;inset:0;z-index:8000;display:flex;flex-direction:column;justify-content:flex-end;background:rgba(2,6,23,0.7);backdrop-filter:blur(4px)';
+  sheet.onclick = e => { if(e.target===sheet) sheet.remove(); };
+
+  const btns = SEARCH_ENGINES.map(eng => `
+    <a href="${eng.url(query)}" target="_blank" rel="noopener"
+       onclick="document.getElementById('web-search-sheet').remove()"
+       style="display:flex;align-items:center;gap:14px;padding:15px 20px;border-bottom:1px solid #1e293b;text-decoration:none;color:#e2e8f0;font-size:15px;font-weight:600;transition:background .15s"
+       onmouseenter="this.style.background='#0f172a'" onmouseleave="this.style.background=''">
+      <span style="font-size:22px;width:32px;text-align:center">${eng.icon}</span>
+      <div>
+        <div>${eng.label}</div>
+        <div style="font-size:11px;color:#475569;font-weight:400;margin-top:2px">Hledat: ${query.length > 40 ? query.slice(0,40)+'…' : query}</div>
+      </div>
+      <span style="margin-left:auto;color:#334155;font-size:18px">›</span>
+    </a>`).join('');
+
+  sheet.innerHTML = `
+    <div style="background:#0a0f1e;border-radius:20px 20px 0 0;border-top:1px solid #1e293b;overflow:hidden;max-width:480px;width:100%;margin:0 auto">
+      <div style="padding:14px 20px 10px;border-bottom:1px solid #1e293b">
+        <div style="width:36px;height:4px;background:#1e293b;border-radius:4px;margin:0 auto 14px"></div>
+        <div style="font-size:11px;letter-spacing:2px;color:#38bdf8;font-weight:700;font-family:monospace;text-transform:uppercase;margin-bottom:4px">Hledat na internetu</div>
+        <div style="font-size:15px;font-weight:800;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${query}</div>
+      </div>
+      ${btns}
+      <button onclick="document.getElementById('web-search-sheet').remove()" style="width:100%;padding:16px;background:transparent;border:none;color:#64748b;font-size:15px;font-weight:600;cursor:pointer">Zrušit</button>
+    </div>`;
+
+  document.body.appendChild(sheet);
+}
+
+// ── EXPORT / IMPORT DATA ──
+async function exportData(){
+  try {
+    const allData = {
+      version: 1,
+      exported: new Date().toISOString(),
+      people: people,
+      settings: appSettings,
+      lock: { pin: lockState.pin }
+    };
+    const json = JSON.stringify(allData, null, 2);
+    const blob = new Blob([json], {type:'application/json'});
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    const d = new Date();
+    const ds = d.toISOString().slice(0,10);
+    a.href = url;
+    a.download = `osobnosti-zaloha-${ds}.json`;
+    a.click();
+    URL.revokeObjectURL(url);
+  } catch(e) {
+    alert('Export selhal: '+e.message);
+  }
+}
+
+async function importData(event){
+  const file = event.target.files && event.target.files[0];
+  event.target.value='';
+  if(!file) return;
+  try {
+    const text = await file.text();
+    const data = JSON.parse(text);
+    // Validate
+    if(!data.people || !Array.isArray(data.people)){
+      alert('Neplatný soubor zálohy.');
+      return;
+    }
+    const count = data.people.length;
+    if(!confirm(`Import přepíše ${people.length} stávajících záznamů a načte ${count} ze zálohy.\nPokračovat?`)) return;
+    people = data.people;
+    await saveData();
+    if(data.settings){
+      appSettings = {...appSettings, ...data.settings};
+      try { localStorage.setItem(SETTINGS_KEY, JSON.stringify(appSettings)); } catch {}
+      applySettings();
+    }
+    if(data.lock){
+      lockState = { pin: data.lock.pin||null };
+      saveLockState();
+      updateSecurityUI();
+    }
+    renderList();
+    showView('list');
+    alert(`✓ Importováno ${count} záznamů.`);
+  } catch(e) {
+    alert('Import selhal: '+e.message);
+  }
+}
+
+// ── INIT ──
+// Wait for full DOM before init
+async function appInit(){
+  await loadData();
+  await loadGlobalLinks();
+  loadSettings();
+  loadLockState();
+  setBestFilter('all');
+  renderSortChips();
+  renderList();
+  renderGlobalLinks();
+  updateSecurityUI();
+  initLockScreen();
+  // Background: detect focal points for photos that don't have them yet
+  setTimeout(detectAllFocalPoints, 1500);
+}
+if(document.readyState === 'loading'){
+  document.addEventListener('DOMContentLoaded', appInit);
+} else {
+  appInit();
+}
+
+// ── AUTO-LOCK pouze při zavření/opuštění aplikace (ne při přepnutí záložky) ──
+window.addEventListener('pagehide', ()=>{
+  if(lockState.pin){
+    // Uložíme příznak, že app byla opuštěna a má se zamknout při návratu
+    try { sessionStorage.setItem('osobnosti_should_lock', '1'); } catch {}
+  }
+});
+
+document.addEventListener('visibilitychange', ()=>{
+  if(!document.hidden && lockState.pin && !isLocked){
+    // Zamkni pouze pokud byl nastaven příznak opuštění (ne jen přepnutí záložky)
+    try {
+      if(sessionStorage.getItem('osobnosti_should_lock') === '1'){
+        sessionStorage.removeItem('osobnosti_should_lock');
+        isLocked = true;
+        pinBuffer = '';
+        updatePinDots('pin-dots', 0);
+        document.getElementById('lock-screen').style.display = 'flex';
+        document.getElementById('lock-wrong-msg').classList.remove('visible');
+      }
+    } catch {}
+  }
+});
+
+</script>
+
+<!-- ════ PHOTO EDITOR MODAL ════ -->
+<div id="photo-editor-modal">
+  <div class="pe-header">
+    <div class="pe-header-row">
+      <div class="pe-title">✂️ Nastavit pozici fotky</div>
+      <button class="btn btn-ghost btn-sm" onclick="peClose(false)" style="padding:6px 12px;font-size:13px">Zrušit</button>
+    </div>
+    <div class="pe-hint">👆 Táhni pro posun · posuvník nebo 2 prsty = zoom</div>
+  </div>
+  <div id="pe-stage">
+    <img id="pe-photo" src="" alt="" draggable="false">
+    <svg id="pe-overlay" xmlns="http://www.w3.org/2000/svg">
+      <line id="pe-hline" x1="0" y1="50%" x2="100%" y2="50%" stroke="rgba(56,189,248,0.5)" stroke-width="1" stroke-dasharray="4,4"/>
+      <line id="pe-vline" x1="50%" y1="0" x2="50%" y2="100%" stroke="rgba(56,189,248,0.5)" stroke-width="1" stroke-dasharray="4,4"/>
+      <circle id="pe-circle" cx="50%" cy="50%" r="80" fill="none" stroke="rgba(56,189,248,0.6)" stroke-width="2"/>
+    </svg>
+  </div>
+  <div class="pe-bottom">
+    <div class="pe-preview-row">
+      <div>
+        <div class="pe-prev-c"><img id="pe-prev-c" src="" alt="" draggable="false"></div>
+        <div style="font-size:9px;color:#64748b;text-align:center;margin-top:3px">Profil</div>
+      </div>
+      <div>
+        <div class="pe-prev-s"><img id="pe-prev-s" src="" alt="" draggable="false"></div>
+        <div style="font-size:9px;color:#64748b;text-align:center;margin-top:3px">Galerie</div>
+      </div>
+      <div class="pe-preview-info">Posuň fotku tak,<br>aby hlava byla uprostřed</div>
+      <button class="btn btn-ghost btn-sm" onclick="peReset()" style="padding:6px 10px;font-size:11px">↺</button>
+    </div>
+    <div class="pe-zoom-row">
+      <span style="font-size:16px">🔍</span>
+      <input type="range" class="pe-zoom-slider" id="pe-zoom-slider" min="100" max="400" value="100" oninput="peZoom(+this.value)">
+      <span id="pe-zoom-pct">100%</span>
+    </div>
+    <div class="pe-actions">
+      <button class="btn btn-primary" style="flex:1;justify-content:center;padding:13px;font-size:15px" onclick="peClose(true)">✓ Použít</button>
+    </div>
+  </div>
+</div>
+
+</body>
+</html>
