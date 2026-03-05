@@ -167,9 +167,9 @@ select.filter-input option { background: #0f172a; }
 
 /* ── PHOTO GALLERY (DETAIL) ── */
 .gallery-section { margin-bottom: 16px; }
-.gallery-main { position: relative; width: 100%; max-height: 70vh; min-height: 200px; border-radius: 14px; overflow: hidden; background: #0a0a0a; border: 1px solid #1e293b; margin-bottom: 8px; cursor: zoom-in; display: flex; align-items: center; justify-content: center; }
-.gallery-main img { max-width: 100%; max-height: 70vh; width: auto; height: auto; object-fit: contain; transition: transform 0.2s; display: block; }
-.gallery-main:active img { transform: scale(1.03); }
+.gallery-main { position: relative; width: 100%; height: 75vw; max-height: 85vh; min-height: 220px; border-radius: 14px; overflow: hidden; background: #0a0a0a; border: 1px solid #1e293b; margin-bottom: 8px; cursor: zoom-in; display: flex; align-items: center; justify-content: center; }
+.gallery-main img { width: 100%; height: 100%; object-fit: contain; transition: transform 0.2s; display: block; touch-action: none; }
+.gallery-main:active img { transform: scale(1.02); }
 .gallery-main-placeholder { width: 100%; height: 100%; display: flex; align-items: center; justify-content: center; font-size: 64px; }
 .gallery-counter { position: absolute; bottom: 8px; right: 10px; background: rgba(0,0,0,.65); color: #e2e8f0; font-size: 11px; font-weight: 700; border-radius: 10px; padding: 3px 9px; font-family: monospace; }
 .gallery-nav { position: absolute; top: 50%; transform: translateY(-50%); background: rgba(0,0,0,.55); border: none; color: #fff; font-size: 20px; padding: 8px 12px; cursor: pointer; border-radius: 8px; line-height: 1; }
@@ -181,13 +181,15 @@ select.filter-input option { background: #0f172a; }
 .gallery-thumb.active { border-color: #38bdf8; }
 
 /* ── LIGHTBOX ── */
-.lightbox { display: none; position: fixed; inset: 0; background: rgba(0,0,0,.92); z-index: 999; align-items: center; justify-content: center; }
+.lightbox { display: none; position: fixed; inset: 0; background: rgba(0,0,0,.96); z-index: 999; align-items: center; justify-content: center; overflow: hidden; }
 .lightbox.open { display: flex; }
-.lightbox img { max-width: 96vw; max-height: 90vh; object-fit: contain; border-radius: 8px; }
-.lightbox-close { position: absolute; top: 16px; right: 16px; background: rgba(255,255,255,.15); border: none; color: #fff; font-size: 24px; width: 44px; height: 44px; border-radius: 50%; cursor: pointer; display: flex; align-items: center; justify-content: center; }
-.lightbox-nav { position: absolute; top: 50%; transform: translateY(-50%); background: rgba(255,255,255,.15); border: none; color: #fff; font-size: 28px; padding: 12px 16px; cursor: pointer; border-radius: 8px; line-height: 1; }
+.lightbox img { max-width: 100vw; max-height: 100vh; object-fit: contain; border-radius: 4px; touch-action: none; cursor: zoom-in; transition: transform 0.15s; transform-origin: center center; }
+.lightbox img.zoomed { cursor: grab; }
+.lightbox-close { position: absolute; top: 16px; right: 16px; background: rgba(255,255,255,.15); border: none; color: #fff; font-size: 24px; width: 44px; height: 44px; border-radius: 50%; cursor: pointer; display: flex; align-items: center; justify-content: center; z-index: 10; }
+.lightbox-nav { position: absolute; top: 50%; transform: translateY(-50%); background: rgba(255,255,255,.15); border: none; color: #fff; font-size: 28px; padding: 12px 16px; cursor: pointer; border-radius: 8px; line-height: 1; z-index: 10; }
 .lightbox-nav-l { left: 10px; }
 .lightbox-nav-r { right: 10px; }
+.lightbox-zoom-hint { position: absolute; bottom: 20px; left: 50%; transform: translateX(-50%); background: rgba(0,0,0,.55); color: #94a3b8; font-size: 11px; padding: 5px 14px; border-radius: 20px; pointer-events: none; transition: opacity 0.5s; }
 
 /* ── PHOTO EDITOR MODAL ── */
 #photo-editor-modal {
@@ -463,7 +465,9 @@ input:checked + .toggle-slider:before { transform: translateX(22px); background:
     <div class="filter-inner">
       <div class="filter-grid">
         <div class="filter-group"><label>Jméno</label><input class="filter-input" id="filt-name" placeholder="Tesla..." oninput="renderList()"></div>
-        <div class="filter-group"><label>Rok narození</label><input class="filter-input" id="filt-born" placeholder="1856" type="number" min="0" max="2100" oninput="renderList()"></div>
+        <div class="filter-group"><label>Rok narození</label><input class="filter-input" id="filt-born-year" placeholder="1856" type="number" min="0" max="2100" oninput="renderList()"></div>
+        <div class="filter-group"><label>Měsíc nar. (1–12)</label><input class="filter-input" id="filt-born-month" placeholder="2" type="number" min="1" max="12" oninput="renderList()"></div>
+        <div class="filter-group"><label>Den nar. (1–31)</label><input class="filter-input" id="filt-born-day" placeholder="25" type="number" min="1" max="31" oninput="renderList()"></div>
         <div class="filter-group"><label>Země původu</label><input class="filter-input" id="filt-country" placeholder="Česko..." oninput="renderList()"></div>
         <div class="filter-group"><label>Profese</label><input class="filter-input" id="filt-profession" placeholder="Fyzik, Herec..." oninput="renderList()"></div>
         <div class="filter-group" style="grid-column:1/-1"><label>Min. hodnocení ★</label>
@@ -480,7 +484,10 @@ input:checked + .toggle-slider:before { transform: translateX(22px); background:
           <div class="tc" id="bf-no" onclick="setBestFilter('no')">Bez Best</div>
         </div>
       </div>
-      <button class="btn btn-ghost btn-sm" onclick="clearFilters()">✕ Vymazat filtry</button>
+      <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:10px;">
+        <button class="btn btn-primary btn-sm" onclick="filterBirthdayToday()">🎂 Narozeniny dnes</button>
+        <button class="btn btn-ghost btn-sm" onclick="clearFilters()">✕ Vymazat filtry</button>
+      </div>
     </div>
   </div>
   <div id="list-container"></div>
@@ -703,11 +710,27 @@ input:checked + .toggle-slider:before { transform: translateX(22px); background:
         <span id="icon-upload-preview-content">📷</span>
       </div>
       <div>
-        <div style="font-size:14px;font-weight:700;color:#e2e8f0;margin-bottom:3px">Nahrát obrázek</div>
+        <div style="font-size:14px;font-weight:700;color:#e2e8f0;margin-bottom:3px">Nahrát obrázek z galerie</div>
         <div class="icon-upload-zone-label">PNG, JPG, SVG — bude oříznut na čtverec</div>
       </div>
       <input type="file" accept="image/*" id="icon-file-input" style="display:none" onchange="handleIconImageUpload(event)">
     </label>
+
+    <!-- Icon crop position sliders (shown only when image uploaded) -->
+    <div id="icon-crop-controls" style="display:none;margin-top:12px;background:#0f172a;border:1px solid #1e293b;border-radius:10px;padding:14px">
+      <div style="font-size:11px;color:#64748b;font-weight:700;letter-spacing:1px;text-transform:uppercase;font-family:monospace;margin-bottom:10px">Pozice výřezu (střed)</div>
+      <div style="display:flex;align-items:center;gap:10px;margin-bottom:8px">
+        <span style="font-size:12px;color:#94a3b8;width:50px;flex-shrink:0">Vodorovně</span>
+        <input type="range" id="icon-crop-x" min="0" max="100" value="50" style="flex:1;accent-color:#38bdf8" oninput="updateIconCrop()">
+        <span style="font-size:12px;color:#64748b;width:30px;text-align:right" id="icon-crop-x-val">50%</span>
+      </div>
+      <div style="display:flex;align-items:center;gap:10px;margin-bottom:10px">
+        <span style="font-size:12px;color:#94a3b8;width:50px;flex-shrink:0">Svisle</span>
+        <input type="range" id="icon-crop-y" min="0" max="100" value="50" style="flex:1;accent-color:#38bdf8" oninput="updateIconCrop()">
+        <span style="font-size:12px;color:#64748b;width:30px;text-align:right" id="icon-crop-y-val">50%</span>
+      </div>
+      <button class="btn btn-ghost btn-sm" onclick="centerIconCrop()">⊙ Vystředit</button>
+    </div>
 
     <!-- Divider -->
     <div style="display:flex;align-items:center;gap:10px;margin:14px 0 10px">
@@ -752,12 +775,13 @@ input:checked + .toggle-slider:before { transform: translateX(22px); background:
     </div>
 
 <!-- ════ LIGHTBOX ════ -->
-<div class="lightbox" id="lightbox" onclick="closeLightbox()">
+<div class="lightbox" id="lightbox" onclick="lbBgClick(event)">
   <button class="lightbox-close" onclick="event.stopPropagation();closeLightbox()">✕</button>
   <button class="lightbox-nav lightbox-nav-l" onclick="event.stopPropagation();lightboxNav(-1)">‹</button>
   <img id="lightbox-img" src="" alt="" onclick="event.stopPropagation()" style="touch-action:none" 
     ontouchstart="lbTouchStart(event)" ontouchmove="lbTouchMove(event)" ontouchend="lbTouchEnd(event)">
   <button class="lightbox-nav lightbox-nav-r" onclick="event.stopPropagation();lightboxNav(1)">›</button>
+  <div class="lightbox-zoom-hint" id="lb-zoom-hint">Dvojitý klik / dvojitý dotek = zoom</div>
 </div>
 
 
@@ -1279,16 +1303,27 @@ function parseDocxText(text, filename){
 function showView(n){document.querySelectorAll('.view').forEach(v=>v.classList.remove('active'));document.getElementById('view-'+n).classList.add('active');window.scrollTo(0,0);}
 
 // ── SORT ──
-const SORTS=[{k:'newest',l:'🕐 Nejnovější'},{k:'name',l:'A–Z Jméno'},{k:'rating',l:'★ Hodnocení'},{k:'best',l:'⭐ Best'},{k:'born',l:'📅 Rok nar.'}];
+const SORTS=[{k:'newest',l:'🕐 Nejnovější'},{k:'name',l:'A–Z Jméno'},{k:'nameZ',l:'Z–A Jméno'},{k:'rating',l:'★ Hodnocení'},{k:'best',l:'⭐ Best'}];
 function renderSortChips(){document.getElementById('sort-row').innerHTML=SORTS.map(s=>`<div class="chip ${currentSort===s.k?'active':''}" onclick="setSort('${s.k}')">${s.l}</div>`).join('');}
 function setSort(k){currentSort=k;renderSortChips();renderList();}
 
 // ── FILTERS ──
 function toggleFilterPanel(){filterOpen=!filterOpen;document.getElementById('filter-panel').classList.toggle('open',filterOpen);document.getElementById('filter-btn').classList.toggle('active',filterOpen||countFilters()>0);}
-function countFilters(){return[document.getElementById('filt-name')?.value,document.getElementById('filt-born')?.value,document.getElementById('filt-country')?.value,document.getElementById('filt-profession')?.value,document.getElementById('filt-rating')?.value,bestFilter!=='all'?'1':''].filter(Boolean).length;}
+function countFilters(){return[document.getElementById('filt-name')?.value,document.getElementById('filt-born-year')?.value,document.getElementById('filt-born-month')?.value,document.getElementById('filt-born-day')?.value,document.getElementById('filt-country')?.value,document.getElementById('filt-profession')?.value,document.getElementById('filt-rating')?.value,bestFilter!=='all'?'1':''].filter(Boolean).length;}
 function setBestFilter(v){bestFilter=v;['all','yes','no'].forEach(x=>{const el=document.getElementById('bf-'+x);el.className='tc'+(x===v?(v==='yes'?' ay':v==='no'?' an':' aa'):'');});renderList();updateFilterBadge();}
 function updateFilterBadge(){const n=countFilters();const b=document.getElementById('filter-n-badge');b.style.display=n?'':'none';b.textContent=n;document.getElementById('filter-btn').classList.toggle('active',filterOpen||n>0);}
-function clearFilters(){['filt-name','filt-born','filt-country','filt-profession','filt-rating'].forEach(id=>{document.getElementById(id).value='';});setBestFilter('all');renderList();updateFilterBadge();}
+function clearFilters(){['filt-name','filt-born-year','filt-born-month','filt-born-day','filt-country','filt-profession','filt-rating'].forEach(id=>{const el=document.getElementById(id);if(el)el.value='';});setBestFilter('all');renderList();updateFilterBadge();}
+function filterBirthdayToday(){
+  const now=new Date();
+  const dayEl=document.getElementById('filt-born-day');
+  const monEl=document.getElementById('filt-born-month');
+  const yearEl=document.getElementById('filt-born-year');
+  if(dayEl)dayEl.value=now.getDate();
+  if(monEl)monEl.value=now.getMonth()+1;
+  if(yearEl)yearEl.value='';
+  if(!filterOpen){filterOpen=true;document.getElementById('filter-panel').classList.add('open');document.getElementById('filter-btn').classList.add('active');}
+  renderList();updateFilterBadge();
+}
 
 // ── HELPERS ──
 function fmtDate(d){if(!d)return'—';const dt=new Date(d+'T12:00:00');return dt.toLocaleDateString('cs-CZ',{day:'numeric',month:'long',year:'numeric'});}
@@ -1519,7 +1554,9 @@ function fuzzyMatchPerson(q, p){
 function getFiltered(){
   const q=(document.getElementById('search-input')?.value||'').trim();
   const fn=(document.getElementById('filt-name')?.value||'').toLowerCase();
-  const fb=(document.getElementById('filt-born')?.value||'').trim();
+  const fbYear=parseInt(document.getElementById('filt-born-year')?.value||'')||0;
+  const fbMonth=parseInt(document.getElementById('filt-born-month')?.value||'')||0;
+  const fbDay=parseInt(document.getElementById('filt-born-day')?.value||'')||0;
   const fc=(document.getElementById('filt-country')?.value||'').toLowerCase();
   const fp=(document.getElementById('filt-profession')?.value||'').toLowerCase();
   const fr=parseInt(document.getElementById('filt-rating')?.value||'')||0;
@@ -1535,7 +1572,14 @@ function getFiltered(){
     }
     // Panel filters: strict (these are deliberate precise filters)
     if(fn&&!norm(p.name).includes(norm(fn)))return false;
-    if(fb){if(!p.born)return false;if(new Date(p.born).getFullYear()!==parseInt(fb))return false;}
+    // Birthday filtering - parse born date
+    if(fbYear||fbMonth||fbDay){
+      if(!p.born) return false;
+      const bDate=new Date(p.born+'T12:00:00');
+      if(fbYear&&bDate.getFullYear()!==fbYear) return false;
+      if(fbMonth&&(bDate.getMonth()+1)!==fbMonth) return false;
+      if(fbDay&&bDate.getDate()!==fbDay) return false;
+    }
     if(fc&&!norm(p.country||'').includes(norm(fc)))return false;
     if(fp&&!norm(p.profession||'').includes(norm(fp)))return false;
     if(fr&&(p.rating||0)<fr)return false;
@@ -1546,7 +1590,9 @@ function getFiltered(){
 }
 function getSorted(arr){const a=[...arr];// If fuzzy search active, sort by score first
 if(a.length&&a[0]._fuzzyScore!==undefined&&document.getElementById('search-input')?.value.trim()){return a.sort((x,y)=>(y._fuzzyScore||0)-(x._fuzzyScore||0));}
-if(currentSort==='name')return a.sort((x,y)=>x.name.localeCompare(y.name,'cs'));if(currentSort==='rating')return a.sort((x,y)=>(y.rating||0)-(x.rating||0));if(currentSort==='best')return a.sort((x,y)=>(y.best?1:0)-(x.best?1:0));if(currentSort==='born')return a.sort((x,y)=>(x.born||'9999')<(y.born||'9999')?-1:1);return a.sort((x,y)=>y.id-x.id);}
+if(currentSort==='name')return a.sort((x,y)=>x.name.localeCompare(y.name,'cs'));
+if(currentSort==='nameZ')return a.sort((x,y)=>y.name.localeCompare(x.name,'cs'));
+if(currentSort==='rating')return a.sort((x,y)=>(y.rating||0)-(x.rating||0));if(currentSort==='best')return a.sort((x,y)=>(y.best?1:0)-(x.best?1:0));if(currentSort==='born')return a.sort((x,y)=>(x.born||'9999')<(y.born||'9999')?-1:1);return a.sort((x,y)=>y.id-x.id);}
 
 // ── VIRTUAL SCROLL ──
 const PAGE_SIZE = 40; // items per render batch
@@ -1649,11 +1695,42 @@ function openDetail(id){
   document.getElementById('detail-tags').innerHTML=(p.profession||'').split(',').map(t=>`<span class="tag">${t.trim()}</span>`).join('')+(p.country?`<span class="tag tag-blue">${p.country}</span>`:'')+(p.best?`<span class="tag tag-gold">⭐ Best</span>`:'');
 
   // Info
-  const age=(p.born&&p.died)?(new Date(p.died).getFullYear()-new Date(p.born).getFullYear()):null;
+  const now=new Date();
   let rows='';
-  if(p.born)rows+=`<div class="info-row"><span class="info-label">Narozen/a</span><span class="info-value">${fmtDate(p.born)}</span></div>`;
-  rows+=`<div class="info-row"><span class="info-label">Zemřel/a</span><span class="info-value">${p.died?fmtDate(p.died):'Žije'}</span></div>`;
-  if(age!==null)rows+=`<div class="info-row"><span class="info-label">Věk při úmrtí</span><span class="info-value">${age} let</span></div>`;
+  if(p.born){
+    rows+=`<div class="info-row"><span class="info-label">Narozen/a</span><span class="info-value">${fmtDate(p.born)}</span></div>`;
+    // Age calculation
+    const bornStr=p.born;
+    const isOnlyYear=/^\d{4}$/.test(bornStr)||/^\d{4}-01-01$/.test(bornStr)&&!p._bornFullDate;
+    if(p.died){
+      // Age at death
+      const diedDate=new Date(p.died+'T12:00:00');
+      const bornDate=new Date(bornStr+'T12:00:00');
+      const ageAtDeath=diedDate.getFullYear()-bornDate.getFullYear()-(diedDate.getMonth()<bornDate.getMonth()||(diedDate.getMonth()===bornDate.getMonth()&&diedDate.getDate()<bornDate.getDate())?1:0);
+      rows+=`<div class="info-row"><span class="info-label">Zemřel/a</span><span class="info-value">${fmtDate(p.died)}</span></div>`;
+      rows+=`<div class="info-row"><span class="info-label">Věk při úmrtí</span><span class="info-value">${ageAtDeath} let</span></div>`;
+    } else {
+      // Living — compute current age
+      const bornDate=new Date(bornStr+'T12:00:00');
+      const bornYear=bornDate.getFullYear();
+      const bornMon=bornDate.getMonth();// 0-based
+      const bornDay=bornDate.getDate();
+      // If born stored as YYYY-01-01 AND original string was just 4 digits → only year known
+      const onlyYear=bornStr.length===4;
+      if(onlyYear){
+        const age1=now.getFullYear()-bornYear-1;
+        const age2=now.getFullYear()-bornYear;
+        rows+=`<div class="info-row"><span class="info-label">Věk</span><span class="info-value">${age1} nebo ${age2} let</span></div>`;
+      } else {
+        const hadBirthdayThisYear=now.getMonth()>bornMon||(now.getMonth()===bornMon&&now.getDate()>=bornDay);
+        const age=now.getFullYear()-bornYear-(hadBirthdayThisYear?0:1);
+        const isBirthdayToday=now.getMonth()===bornMon&&now.getDate()===bornDay;
+        rows+=`<div class="info-row"><span class="info-label">Věk</span><span class="info-value">${age} let${isBirthdayToday?' 🎂':''}</span></div>`;
+      }
+    }
+  } else if(p.died){
+    rows+=`<div class="info-row"><span class="info-label">Zemřel/a</span><span class="info-value">${fmtDate(p.died)}</span></div>`;
+  }
   document.getElementById('detail-info').innerHTML=rows||'<div class="info-row"><span class="info-label">—</span><span class="info-value">—</span></div>';
 
   // Gallery (only if >1 photos OR has extra photos)
@@ -1720,21 +1797,41 @@ function galleryNav(dir){galleryIdx=(galleryIdx+dir+galleryPhotos.length)%galler
 function setGalleryIdx(i){galleryIdx=i;renderGallery();}
 
 // ── LIGHTBOX ──
+let _lbZoom=1, _lbPanX=0, _lbPanY=0;
+let _lbLastTap=0, _lbPinchDist=0;
+let _lbDragStartX=0, _lbDragStartY=0, _lbDragging=false;
+let _lbSwipeStartX=0, _lbSwipeStartY=0;
+
+function lbApplyTransform(){
+  const img=document.getElementById('lightbox-img');
+  if(!img) return;
+  img.style.transform=`translate(${_lbPanX}px,${_lbPanY}px) scale(${_lbZoom})`;
+  img.style.cursor=_lbZoom>1?'grab':'zoom-in';
+  img.classList.toggle('zoomed',_lbZoom>1);
+}
+function lbReset(){_lbZoom=1;_lbPanX=0;_lbPanY=0;lbApplyTransform();}
+
 function openLightbox(){
   if(!galleryPhotos.length)return;
   lightboxIdx=galleryIdx;
+  lbReset();
   document.getElementById('lightbox-img').src=galleryPhotos[lightboxIdx].src;
   const nl=document.querySelector('.lightbox-nav-l');
   const nr=document.querySelector('.lightbox-nav-r');
   if(nl)nl.style.display=galleryPhotos.length>1?'':'none';
   if(nr)nr.style.display=galleryPhotos.length>1?'':'none';
   document.getElementById('lightbox').classList.add('open');
+  // Show hint briefly
+  const hint=document.getElementById('lb-zoom-hint');
+  if(hint){hint.style.opacity='1';setTimeout(()=>{hint.style.opacity='0';},2500);}
 }
-function closeLightbox(){document.getElementById('lightbox').classList.remove('open');}
+function closeLightbox(){document.getElementById('lightbox').classList.remove('open');lbReset();}
+function lbBgClick(e){if(e.target===document.getElementById('lightbox'))closeLightbox();}
 function lightboxNav(dir){
   if(!galleryPhotos.length)return;
   lightboxIdx=(lightboxIdx+dir+galleryPhotos.length)%galleryPhotos.length;
   document.getElementById('lightbox-img').src=galleryPhotos[lightboxIdx].src;
+  lbReset();
   const nl=document.querySelector('.lightbox-nav-l');
   const nr=document.querySelector('.lightbox-nav-r');
   const show=galleryPhotos.length>1;
@@ -1742,14 +1839,64 @@ function lightboxNav(dir){
   if(nr)nr.style.display=show?'':'none';
 }
 
-// Swipe na lightboxu
-let _lbSwipeX=0;
-function lbTouchStart(e){_lbSwipeX=e.touches[0].clientX;}
-function lbTouchMove(e){e.preventDefault();}
-function lbTouchEnd(e){
-  const dx=e.changedTouches[0].clientX-_lbSwipeX;
-  if(Math.abs(dx)>50) lightboxNav(dx<0?1:-1);
+function lbTouchStart(e){
+  if(e.touches.length===2){
+    // Pinch start
+    _lbPinchDist=Math.hypot(e.touches[0].clientX-e.touches[1].clientX,e.touches[0].clientY-e.touches[1].clientY);
+    _lbDragging=false;
+  } else if(e.touches.length===1){
+    _lbSwipeStartX=e.touches[0].clientX;
+    _lbSwipeStartY=e.touches[0].clientY;
+    _lbDragStartX=e.touches[0].clientX-_lbPanX;
+    _lbDragStartY=e.touches[0].clientY-_lbPanY;
+    _lbDragging=_lbZoom>1;
+    // Double tap detection
+    const now=Date.now();
+    if(now-_lbLastTap<280){
+      // Double tap
+      if(_lbZoom>1){lbReset();}
+      else{_lbZoom=2.5;lbApplyTransform();}
+      _lbLastTap=0;
+      e.preventDefault();
+      return;
+    }
+    _lbLastTap=now;
+  }
 }
+function lbTouchMove(e){
+  if(e.touches.length===2){
+    e.preventDefault();
+    const dist=Math.hypot(e.touches[0].clientX-e.touches[1].clientX,e.touches[0].clientY-e.touches[1].clientY);
+    const ratio=dist/_lbPinchDist;
+    _lbZoom=Math.min(5,Math.max(1,_lbZoom*ratio));
+    _lbPinchDist=dist;
+    if(_lbZoom<=1){_lbPanX=0;_lbPanY=0;}
+    lbApplyTransform();
+  } else if(e.touches.length===1&&_lbDragging){
+    e.preventDefault();
+    _lbPanX=e.touches[0].clientX-_lbDragStartX;
+    _lbPanY=e.touches[0].clientY-_lbDragStartY;
+    lbApplyTransform();
+  }
+}
+function lbTouchEnd(e){
+  if(_lbZoom<=1&&!_lbDragging&&e.changedTouches.length===1){
+    const dx=e.changedTouches[0].clientX-_lbSwipeStartX;
+    const dy=e.changedTouches[0].clientY-_lbSwipeStartY;
+    if(Math.abs(dx)>50&&Math.abs(dx)>Math.abs(dy)*1.5) lightboxNav(dx<0?1:-1);
+    else if(Math.abs(dy)>80&&Math.abs(dy)>Math.abs(dx)*1.5) closeLightbox();
+  }
+  if(_lbZoom<1){lbReset();}
+  _lbDragging=false;
+}
+
+// Double-click zoom for desktop
+document.getElementById && document.addEventListener('DOMContentLoaded',()=>{
+  const lbImg=document.getElementById('lightbox-img');
+  if(lbImg) lbImg.addEventListener('dblclick',()=>{
+    if(_lbZoom>1){lbReset();}else{_lbZoom=2.5;lbApplyTransform();}
+  });
+});
 
 // Otevření lightboxu pro profilovou fotku
 function openSinglePhotoLightbox(){
@@ -2153,6 +2300,10 @@ function openSettings(){
   document.getElementById('settings-name-input').value = appSettings.name || '';
   document.getElementById('settings-preview-name').textContent = appSettings.name || 'Osobnosti';
   updateSettingsIconPreview();
+  // Show crop controls if image already set
+  const cropCtrl=document.getElementById('icon-crop-controls');
+  if(cropCtrl) cropCtrl.style.display=appSettings.iconImg?'':'none';
+  if(appSettings.iconImg) settingsDraft._iconRawSrc=appSettings._iconRawSrc||null;
 
   // Render icon grid
   const ig = document.getElementById('icon-grid');
@@ -2184,29 +2335,78 @@ function selectIcon(em){
 function handleIconImageUpload(e){
   const file = e.target.files[0];
   if(!file) return;
-  // Resize & crop to square via canvas
   const img = new Image();
   const reader = new FileReader();
   reader.onload = ev => {
     img.onload = () => {
-      const canvas = document.createElement('canvas');
-      const size = 128;
-      canvas.width = size; canvas.height = size;
-      const ctx = canvas.getContext('2d');
-      // crop center square
-      const side = Math.min(img.width, img.height);
-      const sx = (img.width - side) / 2;
-      const sy = (img.height - side) / 2;
-      ctx.drawImage(img, sx, sy, side, side, 0, 0, size, size);
-      const dataUrl = canvas.toDataURL('image/jpeg', 0.85);
-      settingsDraft.iconImg = dataUrl;
+      // Store raw src for re-cropping
+      settingsDraft._iconRawSrc = ev.target.result;
+      settingsDraft._iconRawW = img.naturalWidth;
+      settingsDraft._iconRawH = img.naturalHeight;
       settingsDraft.icon = null;
-      updateSettingsIconPreview();
+      // Default crop center
+      document.getElementById('icon-crop-x').value=50;
+      document.getElementById('icon-crop-y').value=50;
+      document.getElementById('icon-crop-x-val').textContent='50%';
+      document.getElementById('icon-crop-y-val').textContent='50%';
+      document.getElementById('icon-crop-controls').style.display='';
+      applyIconCrop(50,50);
       document.querySelectorAll('.icon-option').forEach(el => el.classList.remove('selected'));
     };
     img.src = ev.target.result;
   };
   reader.readAsDataURL(file);
+}
+
+function applyIconCrop(cx,cy){
+  const src=settingsDraft._iconRawSrc; if(!src) return;
+  const img=new Image();
+  img.onload=()=>{
+    const canvas=document.createElement('canvas');
+    const size=128; canvas.width=size; canvas.height=size;
+    const ctx=canvas.getContext('2d');
+    const side=Math.min(img.width,img.height);
+    const sx=Math.max(0,Math.min(img.width-side,(img.width-side)*(cx/100)));
+    const sy=Math.max(0,Math.min(img.height-side,(img.height-side)*(cy/100)));
+    ctx.drawImage(img,sx,sy,side,side,0,0,size,size);
+    const dataUrl=canvas.toDataURL('image/jpeg',0.88);
+    settingsDraft.iconImg=dataUrl;
+    updateSettingsIconPreview();
+    // Update PWA manifest preview
+    injectPWAManifestDynamic(dataUrl);
+  };
+  img.src=src;
+}
+
+function updateIconCrop(){
+  const cx=Number(document.getElementById('icon-crop-x').value);
+  const cy=Number(document.getElementById('icon-crop-y').value);
+  document.getElementById('icon-crop-x-val').textContent=cx+'%';
+  document.getElementById('icon-crop-y-val').textContent=cy+'%';
+  applyIconCrop(cx,cy);
+}
+
+function centerIconCrop(){
+  document.getElementById('icon-crop-x').value=50;
+  document.getElementById('icon-crop-y').value=50;
+  document.getElementById('icon-crop-x-val').textContent='50%';
+  document.getElementById('icon-crop-y-val').textContent='50%';
+  applyIconCrop(50,50);
+}
+
+function injectPWAManifestDynamic(iconSrc){
+  const name=appSettings.name||'Osobnosti';
+  const manifest={name,short_name:name,start_url:'./',display:'standalone',background_color:'#020617',theme_color:'#020617',icons:[{src:iconSrc,sizes:'192x192',type:'image/jpeg'},{src:iconSrc,sizes:'512x512',type:'image/jpeg'}]};
+  const blob=new Blob([JSON.stringify(manifest)],{type:'application/json'});
+  const url=URL.createObjectURL(blob);
+  let el=document.getElementById('pwa-manifest');
+  if(!el){el=document.createElement('link');el.id='pwa-manifest';el.rel='manifest';document.head.appendChild(el);}
+  if(el._prevUrl)URL.revokeObjectURL(el._prevUrl);
+  el._prevUrl=url; el.href=url;
+  // Apple touch icon
+  let atl=document.querySelector('link[rel="apple-touch-icon"]');
+  if(!atl){atl=document.createElement('link');atl.rel='apple-touch-icon';document.head.appendChild(atl);}
+  atl.href=iconSrc;
 }
 
 function updateSettingsIconPreview(){
@@ -2239,11 +2439,13 @@ function saveSettings(){
   if(settingsDraft.name !== undefined) appSettings.name = settingsDraft.name || 'Osobnosti';
   if(settingsDraft.icon !== undefined) appSettings.icon = settingsDraft.icon;
   if(settingsDraft.iconImg !== undefined) appSettings.iconImg = settingsDraft.iconImg;
+  if(settingsDraft._iconRawSrc !== undefined) appSettings._iconRawSrc = settingsDraft._iconRawSrc;
   // if image chosen, clear emoji icon
   if(appSettings.iconImg) appSettings.icon = null;
   if(settingsDraft.color !== undefined) appSettings.color = settingsDraft.color;
   try { localStorage.setItem(SETTINGS_KEY, JSON.stringify(appSettings)); } catch {}
   applySettings();
+  if(appSettings.iconImg) injectPWAManifestDynamic(appSettings.iconImg);
   settingsDraft = {};
   showView('list');
 }
