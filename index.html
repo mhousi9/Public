@@ -12,24 +12,42 @@
 <title>Osobnosti</title>
 <script src="https://cdn.jsdelivr.net/npm/mammoth@1.6.0/mammoth.browser.min.js"></script>
 <script>
-// ── PWA MANIFEST (inline, dynamically created) ──
+// ── PWA MANIFEST — injektuje správnou ikonu SYNCHRONNĚ při startu ──
 (function(){
-  const manifest = {
-    name: "Osobnosti",
-    short_name: "Osobnosti",
-    description: "Databáze osobností",
-    start_url: "./",
-    display: "standalone",
-    background_color: "#020617",
-    theme_color: "#020617",
-    orientation: "portrait",
-    icons: [
-      { src: "data:image/svg+xml," + encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 192 192"><rect width="192" height="192" rx="40" fill="#1e1b4b"/><text x="96" y="130" font-size="110" text-anchor="middle">👤</text></svg>'), sizes: "192x192", type: "image/svg+xml" },
-      { src: "data:image/svg+xml," + encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><rect width="512" height="512" rx="100" fill="#1e1b4b"/><text x="256" y="350" font-size="290" text-anchor="middle">👤</text></svg>'), sizes: "512x512", type: "image/svg+xml" }
-    ]
-  };
-  const blob = new Blob([JSON.stringify(manifest)], {type:'application/json'});
-  document.getElementById('pwa-manifest').href = 'data:application/json;base64,eyJuYW1lIjogIk9zb2Jub3N0aSIsICJzaG9ydF9uYW1lIjogIk9zb2Jub3N0aSIsICJkZXNjcmlwdGlvbiI6ICJEYXRhYlx1MDBlMXplIG9zb2Jub3N0XHUwMGVkIiwgInN0YXJ0X3VybCI6ICIuLyIsICJkaXNwbGF5IjogInN0YW5kYWxvbmUiLCAiYmFja2dyb3VuZF9jb2xvciI6ICIjMDIwNjE3IiwgInRoZW1lX2NvbG9yIjogIiMwMjA2MTciLCAib3JpZW50YXRpb24iOiAicG9ydHJhaXQiLCAiaWNvbnMiOiBbeyJzcmMiOiAiZGF0YTppbWFnZS9zdmcreG1sLCUzQ3N2ZyUyMHhtbG5zJTNEJTIyaHR0cCUzQSUyRiUyRnd3dy53My5vcmclMkYyMDAwJTJGc3ZnJTIyJTIwdmlld0JveCUzRCUyMjAlMjAwJTIwMTkyJTIwMTkyJTIyJTNFJTNDcmVjdCUyMHdpZHRoJTNEJTIyMTkyJTIyJTIwaGVpZ2h0JTNEJTIyMTkyJTIyJTIwcnglM0QlMjI0MCUyMiUyMGZpbGwlM0QlMjIlMjMxZTFiNGIlMjIlMkYlM0UlM0N0ZXh0JTIweCUzRCUyMjk2JTIyJTIweSUzRCUyMjEzMCUyMiUyMGZvbnQtc2l6ZSUzRCUyMjExMCUyMiUyMHRleHQtYW5jaG9yJTNEJTIybWlkZGxlJTIyJTNFJUYwJTlGJTkxJUE0JTNDJTJGdGV4dCUzRSUzQyUyRnN2ZyUzRSIsICJzaXplcyI6ICIxOTJ4MTkyIiwgInR5cGUiOiAiaW1hZ2Uvc3ZnK3htbCJ9XX0=';
+  var iconSrc = null;
+  var appName = 'Osobnosti';
+  try {
+    var s = JSON.parse(localStorage.getItem('osobnosti_settings')||'{}');
+    if(s.iconImg) iconSrc = s.iconImg;
+    if(s.name)    appName = s.name;
+  } catch(e){}
+
+  var icons;
+  if(iconSrc){
+    var mime = iconSrc.startsWith('data:image/png')?'image/png':iconSrc.startsWith('data:image/webp')?'image/webp':'image/jpeg';
+    icons = [
+      {src: iconSrc, sizes:'192x192', type: mime},
+      {src: iconSrc, sizes:'512x512', type: mime}
+    ];
+  } else {
+    icons = [
+      {src:"data:image/svg+xml,"+encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 192 192"><rect width="192" height="192" rx="40" fill="#1e1b4b"/><text x="96" y="130" font-size="110" text-anchor="middle">👤</text></svg>'), sizes:"192x192", type:"image/svg+xml"},
+      {src:"data:image/svg+xml,"+encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><rect width="512" height="512" rx="100" fill="#1e1b4b"/><text x="256" y="350" font-size="290" text-anchor="middle">👤</text></svg>'), sizes:"512x512", type:"image/svg+xml"}
+    ];
+  }
+  var manifest = {name:appName, short_name:appName, start_url:'./', display:'standalone', background_color:'#020617', theme_color:'#020617', orientation:'portrait', icons:icons};
+  var blob = new Blob([JSON.stringify(manifest)], {type:'application/manifest+json'});
+  var url = URL.createObjectURL(blob);
+  var el = document.getElementById('pwa-manifest');
+  if(el){ el.href = url; }
+
+  // Apple touch icon
+  if(iconSrc){
+    var atl = document.createElement('link');
+    atl.rel = 'apple-touch-icon';
+    atl.href = iconSrc;
+    document.head.appendChild(atl);
+  }
 })();
 
 // ── SERVICE WORKER ──
