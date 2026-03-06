@@ -627,8 +627,42 @@ input:checked + .toggle-slider:before { transform: translateX(22px); background:
         <div id="country-suggestions" style="display:none;position:absolute;top:100%;left:0;right:0;background:#1e293b;border:1px solid #38bdf8;border-radius:0 0 10px 10px;z-index:50;max-height:200px;overflow-y:auto;margin-top:-1px"></div>
       </div>
     </div>
-    <div class="form-group"><label class="form-label">Datum narození</label><input class="form-input" id="f-born" type="date"></div>
-    <div class="form-group"><label class="form-label">Datum úmrtí (prázdné = žije)</label><input class="form-input" id="f-died" type="date"></div>
+    <div class="form-group">
+      <label class="form-label">Datum narození <span style="font-size:10px;color:#475569;font-weight:400;text-transform:none;letter-spacing:0">(vyplň jen co znáš)</span></label>
+      <div style="display:grid;grid-template-columns:1fr 1fr 1.6fr;gap:8px">
+        <div>
+          <div style="font-size:10px;color:#64748b;margin-bottom:4px">Den</div>
+          <input class="form-input" id="f-born-d" type="number" min="1" max="31" placeholder="DD" style="text-align:center;padding:10px 6px" oninput="updateDatePreview('born')">
+        </div>
+        <div>
+          <div style="font-size:10px;color:#64748b;margin-bottom:4px">Měsíc</div>
+          <input class="form-input" id="f-born-m" type="number" min="1" max="12" placeholder="MM" style="text-align:center;padding:10px 6px" oninput="updateDatePreview('born')">
+        </div>
+        <div>
+          <div style="font-size:10px;color:#64748b;margin-bottom:4px">Rok</div>
+          <input class="form-input" id="f-born-y" type="number" min="1" max="2200" placeholder="RRRR" oninput="updateDatePreview('born')">
+        </div>
+      </div>
+      <div id="f-born-preview" style="font-size:12px;color:#38bdf8;margin-top:6px;min-height:16px"></div>
+    </div>
+    <div class="form-group">
+      <label class="form-label">Datum úmrtí <span style="font-size:10px;color:#475569;font-weight:400;text-transform:none;letter-spacing:0">(prázdné = žije)</span></label>
+      <div style="display:grid;grid-template-columns:1fr 1fr 1.6fr;gap:8px">
+        <div>
+          <div style="font-size:10px;color:#64748b;margin-bottom:4px">Den</div>
+          <input class="form-input" id="f-died-d" type="number" min="1" max="31" placeholder="DD" style="text-align:center;padding:10px 6px" oninput="updateDatePreview('died')">
+        </div>
+        <div>
+          <div style="font-size:10px;color:#64748b;margin-bottom:4px">Měsíc</div>
+          <input class="form-input" id="f-died-m" type="number" min="1" max="12" placeholder="MM" style="text-align:center;padding:10px 6px" oninput="updateDatePreview('died')">
+        </div>
+        <div>
+          <div style="font-size:10px;color:#64748b;margin-bottom:4px">Rok</div>
+          <input class="form-input" id="f-died-y" type="number" min="1" max="2200" placeholder="RRRR" oninput="updateDatePreview('died')">
+        </div>
+      </div>
+      <div id="f-died-preview" style="font-size:12px;color:#64748b;margin-top:6px;min-height:16px"></div>
+    </div>
     <div class="form-group"><label class="form-label">Hodnocení</label><div class="stars" id="form-stars"></div></div>
 
     <!-- ── Multi-links ── -->
@@ -967,23 +1001,7 @@ async function importDocx(event){
       if(rec.name)    document.getElementById('f-name').value    = rec.name;
       if(rec.alias)   document.getElementById('f-alias').value   = rec.alias;
       if(rec.country) document.getElementById('f-country').value = rec.country;
-      if(rec.born)    document.getElementById('f-born').value    = rec.born;
-      if(rec.photo){
-        formPhotos = [{src: rec.photo, main: true}];
-        renderFormPhotos();
-      }
-      return;
-    }
-
-    const choice = await showImportChoiceDialog(records.length, file.name);
-    if(choice === 'bulk')   await bulkImportRecords(records);
-    else if(choice === 'single'){
-      const rec = records[0];
-      openNew();
-      if(rec.name)    document.getElementById('f-name').value    = rec.name;
-      if(rec.alias)   document.getElementById('f-alias').value   = rec.alias;
-      if(rec.country) document.getElementById('f-country').value = rec.country;
-      if(rec.born)    document.getElementById('f-born').value    = rec.born;
+      if(rec.born){const bp=parseDateParts(rec.born);document.getElementById('f-born-d').value=bp.d||'';document.getElementById('f-born-m').value=bp.m||'';document.getElementById('f-born-y').value=bp.y>0?bp.y:'';updateDatePreview('born');}
       if(rec.photo){
         formPhotos = [{src: rec.photo, main: true}];
         renderFormPhotos();
@@ -1004,7 +1022,7 @@ function parseCellRecords(cells){
     const m = s.match(/(\d{1,2})[\.\s]+(\d{1,2})[\.\s]+(\d{4})/);
     if(m) return `${m[3]}-${m[2].padStart(2,'0')}-${m[1].padStart(2,'0')}`;
     const y = s.match(/^(\d{4})$/);
-    if(y) return `${y[1]}-01-01`;
+    if(y) return y[1];
     return '';
   }
   function isDate(s){ return !!tryDate(s); }
@@ -1062,7 +1080,7 @@ function parseTableRecord(lines){
     const m = s.match(/(\d{1,2})[\.\s]+(\d{1,2})[\.\s]+(\d{4})/);
     if(m) return `${m[3]}-${m[2].padStart(2,'0')}-${m[1].padStart(2,'0')}`;
     const y = s.match(/^(\d{4})$/);
-    if(y) return `${y[1]}-01-01`;
+    if(y) return y[1];
     return '';
   }
   function isDate(s){ return !!tryDate(s); }
@@ -1314,7 +1332,49 @@ function filterBirthdayToday(){
 }
 
 // ── HELPERS ──
-function fmtDate(d){if(!d)return'—';const dt=new Date(d+'T12:00:00');return dt.toLocaleDateString('cs-CZ',{day:'numeric',month:'long',year:'numeric'});}
+// ── PARTIAL DATE HELPERS ──
+// Storage: YYYY-MM-DD | YYYY-MM | YYYY | 0000-MM-DD | 0000-MM
+const _MGEN=['ledna','února','března','dubna','května','června','července','srpna','září','října','listopadu','prosince'];
+function parseDateParts(s){
+  if(!s)return{d:0,m:0,y:0};
+  const m1=s.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+  if(m1)return{y:parseInt(m1[1]),m:parseInt(m1[2]),d:parseInt(m1[3])};
+  const m2=s.match(/^(\d{4})-(\d{2})$/);
+  if(m2)return{y:parseInt(m2[1]),m:parseInt(m2[2]),d:0};
+  const m3=s.match(/^(\d{4})$/);
+  if(m3)return{y:parseInt(m3[1]),m:0,d:0};
+  return{d:0,m:0,y:0};
+}
+function buildDateStr(d,m,y){
+  const dv=parseInt(d)||0,mv=parseInt(m)||0,yv=parseInt(y)||0;
+  if(!dv&&!mv&&!yv)return'';
+  const ms=mv?String(mv).padStart(2,'0'):null,ds=dv?String(dv).padStart(2,'0'):null;
+  if(yv&&mv&&dv)return`${yv}-${ms}-${ds}`;
+  if(yv&&mv)return`${yv}-${ms}`;
+  if(yv)return`${yv}`;
+  if(mv&&dv)return`0000-${ms}-${ds}`;
+  if(mv)return`0000-${ms}`;
+  return'';
+}
+function fmtDate(s){
+  if(!s)return'—';
+  const{d,m,y}=parseDateParts(s);
+  const hy=y>0,mn=m>0?_MGEN[m-1]:null;
+  if(hy&&m&&d)return`${d}. ${mn} ${y}`;
+  if(hy&&m)return`${mn} ${y}`;
+  if(hy)return`${y}`;
+  if(m&&d)return`${d}. ${mn}`;
+  if(m)return mn||'—';
+  return'—';
+}
+function updateDatePreview(which){
+  const d=document.getElementById('f-'+which+'-d')?.value;
+  const m=document.getElementById('f-'+which+'-m')?.value;
+  const y=document.getElementById('f-'+which+'-y')?.value;
+  const s=buildDateStr(d,m,y);
+  const el=document.getElementById('f-'+which+'-preview');
+  if(el)el.textContent=s?('→ '+fmtDate(s)):'';
+}
 function renderStars(container,value,readonly,onChange){container.innerHTML='';for(let i=1;i<=5;i++){const s=document.createElement('span');s.className='star';s.textContent='★';s.style.fontSize=readonly?'16px':'24px';s.style.color=i<=value?'#f59e0b':'#334155';s.style.cursor=readonly?'default':'pointer';if(!readonly)s.onclick=()=>{onChange(i);renderStars(container,i,false,onChange);};container.appendChild(s);}}
 function starsHtml(r){let h='';for(let i=1;i<=5;i++)h+=`<span style="color:${i<=r?'#f59e0b':'#334155'};font-size:13px">★</span>`;return h;}
 
@@ -1563,10 +1623,10 @@ function getFiltered(){
     // Birthday filtering - parse born date
     if(fbYear||fbMonth||fbDay){
       if(!p.born) return false;
-      const bDate=new Date(p.born+'T12:00:00');
-      if(fbYear&&bDate.getFullYear()!==fbYear) return false;
-      if(fbMonth&&(bDate.getMonth()+1)!==fbMonth) return false;
-      if(fbDay&&bDate.getDate()!==fbDay) return false;
+      const bp=parseDateParts(p.born);
+      if(fbYear&&bp.y!==fbYear) return false;
+      if(fbMonth&&bp.m!==fbMonth) return false;
+      if(fbDay&&bp.d!==fbDay) return false;
     }
     if(fc&&!norm(p.country||'').includes(norm(fc)))return false;
     if(fp&&!norm(p.profession||'').includes(norm(fp)))return false;
@@ -1598,7 +1658,7 @@ function makeListItemHtml(p){
         ${p.alias?`<div class="list-alias">"${p.alias}"</div>`:''}
         <div class="list-meta">
           <span>${starsHtml(p.rating||0)}</span>
-          ${p.born?`<span style="font-size:11px;color:#475569">${new Date(p.born+'T12:00:00').getFullYear()}</span>`:''}
+          ${p.born?`<span style="font-size:11px;color:#475569">${parseDateParts(p.born).y||''}</span>`:''}
           <span style="font-size:11px;color:#475569">${(p.profession||'').split(',')[0]}</span>
         </div>
       </div>
@@ -1687,34 +1747,13 @@ function openDetail(id){
   let rows='';
   if(p.born){
     rows+=`<div class="info-row"><span class="info-label">Narozen/a</span><span class="info-value">${fmtDate(p.born)}</span></div>`;
-    // Age calculation
-    const bornStr=p.born;
-    const isOnlyYear=/^\d{4}$/.test(bornStr)||/^\d{4}-01-01$/.test(bornStr)&&!p._bornFullDate;
+    const bp=parseDateParts(p.born),hasYear=bp.y>0;
     if(p.died){
-      // Age at death
-      const diedDate=new Date(p.died+'T12:00:00');
-      const bornDate=new Date(bornStr+'T12:00:00');
-      const ageAtDeath=diedDate.getFullYear()-bornDate.getFullYear()-(diedDate.getMonth()<bornDate.getMonth()||(diedDate.getMonth()===bornDate.getMonth()&&diedDate.getDate()<bornDate.getDate())?1:0);
       rows+=`<div class="info-row"><span class="info-label">Zemřel/a</span><span class="info-value">${fmtDate(p.died)}</span></div>`;
-      rows+=`<div class="info-row"><span class="info-label">Věk při úmrtí</span><span class="info-value">${ageAtDeath} let</span></div>`;
-    } else {
-      // Living — compute current age
-      const bornDate=new Date(bornStr+'T12:00:00');
-      const bornYear=bornDate.getFullYear();
-      const bornMon=bornDate.getMonth();// 0-based
-      const bornDay=bornDate.getDate();
-      // If born stored as YYYY-01-01 AND original string was just 4 digits → only year known
-      const onlyYear=bornStr.length===4;
-      if(onlyYear){
-        const age1=now.getFullYear()-bornYear-1;
-        const age2=now.getFullYear()-bornYear;
-        rows+=`<div class="info-row"><span class="info-label">Věk</span><span class="info-value">${age1} nebo ${age2} let</span></div>`;
-      } else {
-        const hadBirthdayThisYear=now.getMonth()>bornMon||(now.getMonth()===bornMon&&now.getDate()>=bornDay);
-        const age=now.getFullYear()-bornYear-(hadBirthdayThisYear?0:1);
-        const isBirthdayToday=now.getMonth()===bornMon&&now.getDate()===bornDay;
-        rows+=`<div class="info-row"><span class="info-label">Věk</span><span class="info-value">${age} let${isBirthdayToday?' 🎂':''}</span></div>`;
-      }
+      if(hasYear){const dp=parseDateParts(p.died);if(dp.y>0){let age=dp.y-bp.y;if(bp.m&&dp.m&&(dp.m<bp.m||(dp.m===bp.m&&bp.d&&dp.d&&dp.d<bp.d)))age--;rows+=`<div class="info-row"><span class="info-label">Věk při úmrtí</span><span class="info-value">${age} let</span></div>`;}}
+    } else if(hasYear){
+      if(!bp.m){const a1=now.getFullYear()-bp.y-1,a2=now.getFullYear()-bp.y;rows+=`<div class="info-row"><span class="info-label">Věk</span><span class="info-value">${a1} nebo ${a2} let</span></div>`;}
+      else{const hadBD=now.getMonth()+1>bp.m||(now.getMonth()+1===bp.m&&(!bp.d||now.getDate()>=bp.d));const age=now.getFullYear()-bp.y-(hadBD?0:1);const isToday=bp.m===now.getMonth()+1&&bp.d===now.getDate();rows+=`<div class="info-row"><span class="info-label">Věk</span><span class="info-value">${age} let${isToday?' 🎂':''}</span></div>`;}
     }
   } else if(p.died){
     rows+=`<div class="info-row"><span class="info-label">Zemřel/a</span><span class="info-value">${fmtDate(p.died)}</span></div>`;
@@ -2058,7 +2097,9 @@ function openNew(){
   isNew=true;formRating=3;formPhotos=[];formLinks=[];
   document.getElementById('form-title').textContent='Nová osoba';
   document.getElementById('form-submit-btn').textContent='✓ Přidat osobu';
-  ['name','alias','profession','country','born','died','notes'].forEach(f=>document.getElementById('f-'+f).value='');
+  ['name','alias','profession','country','notes'].forEach(f=>document.getElementById('f-'+f).value='');
+  ['born-d','born-m','born-y','died-d','died-m','died-y'].forEach(f=>{const el=document.getElementById('f-'+f);if(el)el.value='';});
+  ['born','died'].forEach(w=>{const el=document.getElementById('f-'+w+'-preview');if(el)el.textContent='';});
   document.getElementById('f-best').checked=false;
   renderFormPhotos();renderFormLinks();
   renderStars(document.getElementById('form-stars'),formRating,false,v=>{formRating=v;});
@@ -2076,10 +2117,17 @@ function openEdit(){
   document.getElementById('f-alias').value=p.alias||'';
   document.getElementById('f-profession').value=p.profession||'';
   document.getElementById('f-country').value=p.country||'';
-  document.getElementById('f-born').value=p.born||'';
-  document.getElementById('f-died').value=p.died||'';
+  const bP=parseDateParts(p.born||'');
+  document.getElementById('f-born-d').value=bP.d||'';
+  document.getElementById('f-born-m').value=bP.m||'';
+  document.getElementById('f-born-y').value=bP.y>0?bP.y:'';
+  const dP=parseDateParts(p.died||'');
+  document.getElementById('f-died-d').value=dP.d||'';
+  document.getElementById('f-died-m').value=dP.m||'';
+  document.getElementById('f-died-y').value=dP.y>0?dP.y:'';
   document.getElementById('f-notes').value=p.notes||'';
   document.getElementById('f-best').checked=!!p.best;
+  updateDatePreview('born'); updateDatePreview('died');
   renderFormPhotos();renderFormLinks();
   renderStars(document.getElementById('form-stars'),formRating,false,v=>{formRating=v;});
   showView('form');
@@ -2094,8 +2142,8 @@ function submitForm(){
     name, alias:document.getElementById('f-alias').value.trim(),
     profession:document.getElementById('f-profession').value.trim(),
     country:document.getElementById('f-country').value.trim(),
-    born:document.getElementById('f-born').value,
-    died:document.getElementById('f-died').value,
+    born:buildDateStr(document.getElementById('f-born-d').value,document.getElementById('f-born-m').value,document.getElementById('f-born-y').value),
+    died:buildDateStr(document.getElementById('f-died-d').value,document.getElementById('f-died-m').value,document.getElementById('f-died-y').value),
     notes:document.getElementById('f-notes').value.trim(),
     best:document.getElementById('f-best').checked,
     rating:formRating,
