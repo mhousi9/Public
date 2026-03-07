@@ -184,22 +184,30 @@ select.filter-input option { background: #0f172a; }
 /* The draggable area */
 #pe-stage {
   flex: 1; overflow: hidden; position: relative;
-  background: #111; cursor: grab; touch-action: none;
+  background: #111 url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='20' height='20'%3E%3Crect width='10' height='10' fill='%23222'/%3E%3Crect x='10' y='10' width='10' height='10' fill='%23222'/%3E%3C/svg%3E") repeat;
+  cursor: grab; touch-action: none;
   display: flex; align-items: center; justify-content: center;
 }
 #pe-stage:active { cursor: grabbing; }
 /* The image inside the stage */
 #pe-photo {
   position: absolute;
-  transform-origin: 0 0;
   pointer-events: none;
   user-select: none;
   -webkit-user-select: none;
   will-change: transform;
+  transform-origin: center center;
+  left: 50%; top: 50%;
 }
-/* Crosshair overlay */
-#pe-overlay {
-  position: absolute; inset: 0; pointer-events: none;
+/* Crosshair overlay → CSS ring */
+#pe-ring {
+  position: absolute;
+  pointer-events: none;
+  border-radius: 50%;
+  border: 2px solid rgba(56,189,248,0.9);
+  box-shadow: 0 0 0 9999px rgba(0,0,0,0.5);
+  left: 50%; top: 50%;
+  transform: translate(-50%, -50%);
 }
 .pe-bottom {
   background: #0a0f1e; border-top: 1px solid #1e293b;
@@ -784,6 +792,9 @@ input:checked + .toggle-slider:before { transform: translateX(22px); background:
         <button class="btn btn-secondary btn-sm" onclick="openPinSetup()">Nastavit</button>
       </div>
     </div>
+
+  </div><!-- /.settings-body -->
+</div><!-- /#view-settings -->
 
 <!-- ════ LIGHTBOX ════ -->
 <div class="lightbox" id="lightbox">
@@ -1400,11 +1411,16 @@ function getAvatarObjectPosition(photoObj){
 }
 
 function makeAvatar(p,size){
-  const src=mainPhotoSrc(p);
-  if(src){
-    const obj=mainPhotoObj(p);
-    const pos=getAvatarObjectPosition(obj);
-    return`<img src="${src}" class="avatar" style="width:${size}px;height:${size}px;object-position:${pos}" onerror="this.style.display='none'">`;
+  const obj=mainPhotoObj(p);
+  if(obj){
+    if(obj.thumbnailSrc){
+      return`<img src="${obj.thumbnailSrc}" class="avatar" style="width:${size}px;height:${size}px;object-fit:cover" onerror="this.style.display='none'">`;
+    }
+    const src=obj.src||'';
+    if(src){
+      const pos=getAvatarObjectPosition(obj);
+      return`<img src="${src}" class="avatar" style="width:${size}px;height:${size}px;object-position:${pos}" onerror="this.style.display='none'">`;
+    }
   }
   return`<div class="avatar-placeholder" style="width:${size}px;height:${size}px;font-size:${Math.round(size*.4)}px;color:#e2e8f0">${p.name.charAt(0).toUpperCase()}</div>`;
 }
@@ -1729,9 +1745,12 @@ function openDetail(id){
   // Hero photo (circle)
   {
     const photoObj=mainPhotoObj(p);
-    const pos=getAvatarObjectPosition(photoObj);
-    document.getElementById('detail-main-photo').innerHTML=mainSrc
-      ?`<img src="${mainSrc}" class="avatar" style="width:120px;height:120px;border:3px solid ${bc};box-shadow:0 0 30px rgba(${p.best?'217,119,6':'56,189,248'},0.3);object-position:${pos};cursor:zoom-in" onclick="openSinglePhotoLightbox()">`
+    const heroSrc = photoObj?.thumbnailSrc || mainSrc;
+    const heroStyle = photoObj?.thumbnailSrc
+      ? `width:120px;height:120px;object-fit:cover;border:3px solid ${bc};box-shadow:0 0 30px rgba(${p.best?'217,119,6':'56,189,248'},0.3);cursor:zoom-in`
+      : `width:120px;height:120px;border:3px solid ${bc};box-shadow:0 0 30px rgba(${p.best?'217,119,6':'56,189,248'},0.3);object-position:${getAvatarObjectPosition(photoObj)};cursor:zoom-in`;
+    document.getElementById('detail-main-photo').innerHTML=heroSrc
+      ?`<img src="${heroSrc}" class="avatar" style="${heroStyle}" onclick="openSinglePhotoLightbox()">`
       :`<div class="avatar-placeholder" style="width:120px;height:120px;font-size:48px;color:#e2e8f0;margin:0 auto;border:3px solid ${bc}">${p.name.charAt(0)}</div>`;
   }
 
@@ -1876,6 +1895,68 @@ function lightboxNav(dir){
 }
 
 document.addEventListener('DOMContentLoaded',()=>{
+  // ── PHOTO EDITOR STAGE: Pointer Events (mouse + touch, spolehlivé na Androidu) ──
+  const peStage = document.getElementById('pe-stage');
+  if(peStage){
+    peStage.style.touchAction = 'none'; // disable browser scroll/zoom on stage
+
+    peStage.addEventListener('pointerdown', e => {
+      e.preventDefault();
+      peStage.setPointerCapture(e.pointerId);
+      _pePointers.set(e.pointerId, {x: e.clientX, y: e.clientY});
+      if(_pePointers.size === 1){
+        _pePinching = false;
+        _peDragging = true;
+        _peDragStartX = e.clientX; _peDragStartY = e.clientY;
+        _pePanStartX = _peX; _pePanStartY = _peY;
+      } else if(_pePointers.size === 2){
+        _peDragging = false;
+        _pePinching = true;
+        const pts = [..._pePointers.values()];
+        _pePinchDist0 = Math.hypot(pts[0].x-pts[1].x, pts[0].y-pts[1].y);
+        _peScale0 = _peScale;
+        _peDragStartX = (pts[0].x+pts[1].x)/2;
+        _peDragStartY = (pts[0].y+pts[1].y)/2;
+        _pePanStartX = _peX; _pePanStartY = _peY;
+      }
+    }, { passive: false });
+
+    peStage.addEventListener('pointermove', e => {
+      if(!_pePointers.has(e.pointerId)) return;
+      _pePointers.set(e.pointerId, {x: e.clientX, y: e.clientY});
+      if(_pePinching && _pePointers.size >= 2){
+        const pts = [..._pePointers.values()];
+        const dist = Math.hypot(pts[0].x-pts[1].x, pts[0].y-pts[1].y);
+        _peScale = Math.min(_peBaseScale*4, Math.max(_peMinScale, _peScale0*(dist/_pePinchDist0)));
+        const mx = (pts[0].x+pts[1].x)/2, my = (pts[0].y+pts[1].y)/2;
+        _peX = _pePanStartX + (mx-_peDragStartX);
+        _peY = _pePanStartY + (my-_peDragStartY);
+        const pct = Math.max(20, Math.round((_peScale/_peBaseScale)*100));
+        document.getElementById('pe-zoom-slider').value = Math.min(400, pct);
+        document.getElementById('pe-zoom-pct').textContent = pct + '%';
+      } else if(_peDragging && _pePointers.size === 1){
+        _peX = _pePanStartX + (e.clientX - _peDragStartX);
+        _peY = _pePanStartY + (e.clientY - _peDragStartY);
+      }
+      peClampPan(); peApplyTransform(); peUpdatePreviews();
+    });
+
+    const pePointerEnd = e => {
+      _pePointers.delete(e.pointerId);
+      if(_pePointers.size < 2){ _pePinching = false; }
+      if(_pePointers.size === 0){ _peDragging = false; }
+      else if(_pePointers.size === 1 && !_pePinching){
+        // Po pinchi se vrátíme k drag jedním prstem
+        const [,pt] = [..._pePointers.entries()][0];
+        _peDragging = true;
+        _peDragStartX = pt.x; _peDragStartY = pt.y;
+        _pePanStartX = _peX; _pePanStartY = _peY;
+      }
+    };
+    peStage.addEventListener('pointerup', pePointerEnd);
+    peStage.addEventListener('pointercancel', pePointerEnd);
+  }
+
   const inner=document.getElementById('lightbox-inner');
   if(!inner) return;
 
@@ -1988,8 +2069,6 @@ function renderFormPhotos(){
   if(!formPhotos.length){list.innerHTML='';return;}
   list.innerHTML=formPhotos.map((ph,i)=>{
     const hasCrop = ph.focalX!=null && ph.focalY!=null;
-    const editing = (window._peEditIdx===i);
-    // Object position for the thumb preview
     const objPos = hasCrop ? `${Math.round(ph.focalX*100)}% ${Math.round(ph.focalY*100)}%` : 'center 25%';
     return `
     <div class="photo-item" style="flex-direction:column;align-items:stretch;padding:0">
@@ -1998,50 +2077,225 @@ function renderFormPhotos(){
         <div style="flex:1;min-width:0">
           <div class="photo-item-name">Fotka ${i+1}</div>
           ${ph.main?'<div class="photo-item-main">★ Titulní</div>':''}
-          <div style="font-size:10px;color:${hasCrop?'#38bdf8':'#64748b'};margin-top:2px">${hasCrop?'✓ Pozice nastavena':'Nastav pozici níže'}</div>
+          <div style="font-size:10px;color:${hasCrop?'#38bdf8':'#64748b'};margin-top:2px">${hasCrop?'✓ Pozice nastavena':'Klikni ✂️ pro nastavení'}</div>
         </div>
-        <button class="btn btn-ghost btn-sm" onclick="peToggle(${i})" style="padding:5px 9px;font-size:14px;flex-shrink:0;border-color:${editing?'#38bdf8':'#1e293b'};color:${editing?'#38bdf8':'#94a3b8'}" title="Upravit pozici">✂️</button>
+        <button class="btn btn-ghost btn-sm" onclick="peOpen(${i})" style="padding:5px 9px;font-size:14px;flex-shrink:0" title="Upravit pozici">✂️</button>
         <button class="photo-item-star ${ph.main?'main':''}" onclick="setMainPhoto(${i})" title="Titulní">★</button>
         <button class="photo-item-del" onclick="removeFormPhoto(${i})">✕</button>
       </div>
-      ${editing ? `
-      <div style="background:#0a0f1e;border-top:1px solid #1e293b;padding:10px 12px">
-        <div style="font-size:11px;color:#64748b;margin-bottom:8px">Posun X (vodorovně)</div>
-        <input type="range" min="0" max="100" value="${Math.round((ph.focalX??0.5)*100)}"
-          style="width:100%;margin-bottom:10px;accent-color:#38bdf8"
-          oninput="peSetFocal(${i}, +this.value/100, null)">
-        <div style="font-size:11px;color:#64748b;margin-bottom:8px">Posun Y (svisle) — vlevo=vršek, vpravo=spodek</div>
-        <input type="range" min="0" max="100" value="${Math.round((ph.focalY??0.25)*100)}"
-          style="width:100%;margin-bottom:10px;accent-color:#38bdf8"
-          oninput="peSetFocal(${i}, null, +this.value/100)">
-        <div style="display:flex;gap:8px;margin-top:4px">
-          <button class="btn btn-ghost btn-sm" onclick="peSetFocal(${i},0.5,0.2)" style="flex:1;font-size:11px">👤 Tvář</button>
-          <button class="btn btn-ghost btn-sm" onclick="peSetFocal(${i},0.5,0.5)" style="flex:1;font-size:11px">⊙ Střed</button>
-          <button class="btn btn-primary btn-sm" onclick="peToggle(${i})" style="flex:1;font-size:11px">✓ Hotovo</button>
-        </div>
-      </div>` : ''}
     </div>`;
   }).join('');
 }
 
-function peToggle(i){
-  window._peEditIdx = (window._peEditIdx===i) ? -1 : i;
-  // Set default focal if not set yet
-  if(window._peEditIdx===i && formPhotos[i] && formPhotos[i].focalX==null){
-    formPhotos[i].focalX=0.5; formPhotos[i].focalY=0.25;
+// ── PHOTO EDITOR MODAL (drag-in-crop) ──
+let _peIdx = -1;
+let _peImgW = 0, _peImgH = 0;
+let _peX = 0, _peY = 0;
+let _peScale = 1;
+let _peBaseScale = 1;   // cover scale (= slider 100%)
+let _peMinScale = 0.1;  // minimum zoom
+let _peRingSize = 0;    // ring diameter in stage px
+let _peDragging = false;
+let _peDragStartX = 0, _peDragStartY = 0;
+let _pePanStartX = 0, _pePanStartY = 0;
+let _pePinching = false;
+let _pePinchDist0 = 0, _peScale0 = 1;
+let _pePointers = new Map(); // PointerEvents tracking
+
+function peOpen(idx){
+  const ph = formPhotos[idx];
+  if(!ph) return;
+  _peIdx = idx;
+
+  // Otevři modal DŘÍV, než nastavíme src – layout musí proběhnout
+  const modal = document.getElementById('photo-editor-modal');
+  modal.classList.add('open');
+
+  const stageImg = document.getElementById('pe-photo');
+  document.getElementById('pe-prev-c').src = ph.src;
+  document.getElementById('pe-prev-s').src = ph.src;
+  document.getElementById('pe-zoom-slider').value = 100;
+  document.getElementById('pe-zoom-pct').textContent = '100%';
+
+  const doInit = () => {
+    _peImgW = stageImg.naturalWidth;
+    _peImgH = stageImg.naturalHeight;
+    if(!_peImgW || !_peImgH){ stageImg.onload = doInit; return; }
+    stageImg.style.width  = _peImgW + 'px';
+    stageImg.style.height = _peImgH + 'px';
+    // Počkej jeden rAF aby stage měl správné rozměry
+    requestAnimationFrame(() => peInitPosition(ph));
+  };
+
+  stageImg.onload = null;
+  stageImg.src = ph.src;
+  if(stageImg.complete && stageImg.naturalWidth > 0){ doInit(); }
+  else { stageImg.onload = doInit; }
+}
+
+function peInitPosition(ph){
+  const stage = document.getElementById('pe-stage');
+  const sw = stage.clientWidth || stage.offsetWidth;
+  const sh = stage.clientHeight || stage.offsetHeight;
+  if(!sw || !sh || !_peImgW || !_peImgH){
+    requestAnimationFrame(() => peInitPosition(ph));
+    return;
+  }
+  // Nastav velikost kruhu = 84 % kratší strany stage
+  _peRingSize = Math.min(sw, sh) * 0.84;
+  const ring = document.getElementById('pe-ring');
+  if(ring){ ring.style.width = _peRingSize + 'px'; ring.style.height = _peRingSize + 'px'; }
+
+  const fitScale   = Math.min(sw / _peImgW, sh / _peImgH);
+  const coverScale = Math.max(sw / _peImgW, sh / _peImgH);
+  _peBaseScale = coverScale;
+  _peMinScale  = fitScale * 0.3;
+  _peScale = fitScale * 0.55;
+
+  if(ph.focalX != null && ph.focalY != null){
+    _peX = -((ph.focalX - 0.5) * _peImgW) * _peScale;
+    _peY = -((ph.focalY - 0.5) * _peImgH) * _peScale;
+  } else {
+    _peX = 0; _peY = 0;
+  }
+  const pct = Math.max(20, Math.round((_peScale / _peBaseScale) * 100));
+  document.getElementById('pe-zoom-slider').value = Math.min(400, pct);
+  document.getElementById('pe-zoom-pct').textContent = pct + '%';
+  peClampPan();
+  peApplyTransform();
+  peUpdatePreviews();
+}
+
+function peApplyTransform(){
+  const img = document.getElementById('pe-photo');
+  img.style.transform = `translate(calc(-50% + ${_peX}px), calc(-50% + ${_peY}px)) scale(${_peScale})`;
+}
+
+function peClampPan(){
+  if(!_peRingSize || !_peImgW || !_peImgH) return;
+  // Omezení: okraj výřezu (kruhu) nesmí přesáhnout okraj obrázku
+  // → střed obrázku smí být max o (půl obrázek - půl kruh) od středu stage
+  const ringR = _peRingSize / 2;
+  const halfW = _peImgW * _peScale / 2;
+  const halfH = _peImgH * _peScale / 2;
+  const maxX = Math.max(0, halfW - ringR);
+  const maxY = Math.max(0, halfH - ringR);
+  _peX = Math.max(-maxX, Math.min(maxX, _peX));
+  _peY = Math.max(-maxY, Math.min(maxY, _peY));
+}
+
+function peCalcFocal(){
+  return {
+    focalX: Math.max(0, Math.min(1, 0.5 - _peX / (_peImgW * _peScale))),
+    focalY: Math.max(0, Math.min(1, 0.5 - _peY / (_peImgH * _peScale)))
+  };
+}
+
+function peUpdatePreviews(){
+  const { focalX, focalY } = peCalcFocal();
+  const pos = `${Math.round(focalX*100)}% ${Math.round(focalY*100)}%`;
+  ['pe-prev-c','pe-prev-s'].forEach(id => {
+    const el = document.getElementById(id);
+    if(!el) return;
+    el.style.position = 'absolute';
+    el.style.width = '100%';
+    el.style.height = '100%';
+    el.style.objectFit = 'cover';
+    el.style.objectPosition = pos;
+  });
+}
+
+function peZoom(pct){
+  _peScale = Math.max(_peMinScale, _peBaseScale * (pct / 100));
+  const actualPct = Math.round((_peScale / _peBaseScale) * 100);
+  document.getElementById('pe-zoom-pct').textContent = actualPct + '%';
+  peClampPan();
+  peApplyTransform();
+  peUpdatePreviews();
+}
+
+function peReset(){
+  const fitPct = Math.round((_peMinScale / 0.8 / _peBaseScale) * 100);
+  const pct = Math.round((Math.min(_peBaseScale, _peBaseScale) / _peBaseScale) * 100);
+  // Reset to fit (contain) scale
+  const stage = document.getElementById('pe-stage');
+  const fitScale = Math.min(stage.clientWidth / _peImgW, stage.clientHeight / _peImgH);
+  _peScale = fitScale;
+  _peX = 0; _peY = 0;
+  const sliderPct = Math.max(20, Math.round((_peScale / _peBaseScale) * 100));
+  document.getElementById('pe-zoom-slider').value = sliderPct;
+  document.getElementById('pe-zoom-pct').textContent = sliderPct + '%';
+  peApplyTransform();
+  peUpdatePreviews();
+}
+
+async function peClose(apply){
+  const modal = document.getElementById('photo-editor-modal');
+  const idx = _peIdx;
+  // Okamžitě zavři modal a resetuj stav
+  modal.classList.remove('open');
+  _pePointers.clear();
+  _peDragging = false; _pePinching = false;
+  _peIdx = -1;
+
+  if(apply && idx >= 0 && formPhotos[idx]){
+    const ph = formPhotos[idx];
+    // Ulož focal point (záloha pro galerii / velký avatar)
+    ph.focalX = _peImgW > 0 ? Math.max(0, Math.min(1, _peImgW/2 - _peX/_peScale)) / _peImgW : 0.5;
+    ph.focalY = _peImgH > 0 ? Math.max(0, Math.min(1, _peImgH/2 - _peY/_peScale)) / _peImgH : 0.5;
+    // Přesný canvas crop — co bylo uvnitř kruhu = thumbnail
+    try {
+      const thumb = await peGenerateThumbnail(ph);
+      if(thumb) ph.thumbnailSrc = thumb;
+    } catch(e){ /* CORS nebo jiná chyba — thumbnail nevytvoříme */ }
   }
   renderFormPhotos();
 }
 
-function peSetFocal(i, fx, fy){
-  const ph=formPhotos[i]; if(!ph) return;
-  if(fx!=null) ph.focalX=Math.max(0,Math.min(1,fx));
-  if(fy!=null) ph.focalY=Math.max(0,Math.min(1,fy));
-  // Update just the thumb and sliders without full re-render
-  const items=document.getElementById('form-photos-list').children;
-  if(!items[i]) return;
-  const thumb=items[i].querySelector('img');
-  if(thumb) thumb.style.objectPosition=`${Math.round(ph.focalX*100)}% ${Math.round(ph.focalY*100)}%`;
+async function peGenerateThumbnail(ph){
+  return new Promise((resolve, reject) => {
+    const img = new Image();
+    img.crossOrigin = 'anonymous';
+    img.onload = () => {
+      try {
+        const OUT = 400; // výstupní rozlišení čtverce
+        const canvas = document.createElement('canvas');
+        canvas.width = OUT; canvas.height = OUT;
+        const ctx = canvas.getContext('2d');
+
+        // Střed výřezu v souřadnicích zdrojového obrázku
+        const cx = _peImgW / 2 - _peX / _peScale;
+        const cy = _peImgH / 2 - _peY / _peScale;
+        // Velikost ořezu ve zdrojových px (odpovídá průměru kruhu)
+        const cropSz = _peRingSize / _peScale;
+        const half = cropSz / 2;
+
+        // Zdroj: oblast [cx-half .. cx+half] × [cy-half .. cy+half]
+        // Část mimo obrázek zůstane černá (ctx je defaultně černý)
+        const srcX = cx - half;
+        const srcY = cy - half;
+
+        // Výpočet průsečíku se skutečnými hranicemi obrázku
+        const ix = Math.max(0, srcX);
+        const iy = Math.max(0, srcY);
+        const iw = Math.min(img.naturalWidth,  srcX + cropSz) - ix;
+        const ih = Math.min(img.naturalHeight, srcY + cropSz) - iy;
+
+        if(iw > 0 && ih > 0){
+          // Odpovídající místo na výstupním plátně
+          const dstX = (ix - srcX) / cropSz * OUT;
+          const dstY = (iy - srcY) / cropSz * OUT;
+          const dstW = iw / cropSz * OUT;
+          const dstH = ih / cropSz * OUT;
+          ctx.drawImage(img, ix, iy, iw, ih, dstX, dstY, dstW, dstH);
+        }
+
+        resolve(canvas.toDataURL('image/jpeg', 0.88));
+      } catch(e){ reject(e); }
+    };
+    img.onerror = reject;
+    img.src = ph.src;
+  });
 }
 
 function setMainPhoto(i){formPhotos=formPhotos.map((p,j)=>({...p,main:j===i}));renderFormPhotos();}
@@ -2987,15 +3241,11 @@ document.addEventListener('visibilitychange', ()=>{
       <div class="pe-title">✂️ Nastavit pozici fotky</div>
       <button class="btn btn-ghost btn-sm" onclick="peClose(false)" style="padding:6px 12px;font-size:13px">Zrušit</button>
     </div>
-    <div class="pe-hint">👆 Táhni pro posun · posuvník nebo 2 prsty = zoom</div>
+    <div class="pe-hint">👆 Táhni obrázek · posuvník nebo 2 prsty = zoom</div>
   </div>
   <div id="pe-stage">
     <img id="pe-photo" src="" alt="" draggable="false">
-    <svg id="pe-overlay" xmlns="http://www.w3.org/2000/svg">
-      <line id="pe-hline" x1="0" y1="50%" x2="100%" y2="50%" stroke="rgba(56,189,248,0.5)" stroke-width="1" stroke-dasharray="4,4"/>
-      <line id="pe-vline" x1="50%" y1="0" x2="50%" y2="100%" stroke="rgba(56,189,248,0.5)" stroke-width="1" stroke-dasharray="4,4"/>
-      <circle id="pe-circle" cx="50%" cy="50%" r="80" fill="none" stroke="rgba(56,189,248,0.6)" stroke-width="2"/>
-    </svg>
+    <div id="pe-ring"></div>
   </div>
   <div class="pe-bottom">
     <div class="pe-preview-row">
@@ -3012,7 +3262,7 @@ document.addEventListener('visibilitychange', ()=>{
     </div>
     <div class="pe-zoom-row">
       <span style="font-size:16px">🔍</span>
-      <input type="range" class="pe-zoom-slider" id="pe-zoom-slider" min="100" max="400" value="100" oninput="peZoom(+this.value)">
+      <input type="range" class="pe-zoom-slider" id="pe-zoom-slider" min="20" max="400" value="100" oninput="peZoom(+this.value)">
       <span id="pe-zoom-pct">100%</span>
     </div>
     <div class="pe-actions">
