@@ -8,7 +8,7 @@
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="Osobnosti">
 <meta name="theme-color" content="#020617">
-<link rel="manifest" id="pwa-manifest">
+<link rel="manifest" href="./manifest.json">
 <title>Osobnosti</title>
 <script src="https://cdn.jsdelivr.net/npm/mammoth@1.6.0/mammoth.browser.min.js"></script>
 <script>
@@ -2719,27 +2719,7 @@ function centerIconCrop(){
 }
 
 function injectPWAManifestDynamic(iconSrc){
-  const name=appSettings.name||'Osobnosti';
-  let icons;
-  if(iconSrc){
-    const mime=iconSrc.startsWith('data:image/png')?'image/png':iconSrc.startsWith('data:image/webp')?'image/webp':'image/jpeg';
-    icons=[{src:iconSrc,sizes:'192x192',type:mime},{src:iconSrc,sizes:'512x512',type:mime}];
-  } else {
-    const svg192='data:image/svg+xml,'+encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 192 192"><rect width="192" height="192" rx="40" fill="#1e1b4b"/><text x="96" y="130" font-size="110" text-anchor="middle">👤</text></svg>');
-    const svg512='data:image/svg+xml,'+encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><rect width="512" height="512" rx="100" fill="#1e1b4b"/><text x="256" y="350" font-size="290" text-anchor="middle">👤</text></svg>');
-    icons=[{src:svg192,sizes:'192x192',type:'image/svg+xml'},{src:svg512,sizes:'512x512',type:'image/svg+xml'}];
-  }
-  const manifest={name,short_name:name,start_url:'./',display:'standalone',background_color:'#020617',theme_color:'#020617',icons};
-  const blob=new Blob([JSON.stringify(manifest)],{type:'application/manifest+json'});
-  const url=URL.createObjectURL(blob);
-  let el=document.getElementById('pwa-manifest');
-  if(!el){el=document.createElement('link');el.id='pwa-manifest';el.rel='manifest';document.head.appendChild(el);}
-  if(el._prevUrl) URL.revokeObjectURL(el._prevUrl);
-  el._prevUrl=url; el.href=url;
-  // Apple touch icon
-  let atl=document.querySelector('link[rel="apple-touch-icon"]');
-  if(!atl){atl=document.createElement('link');atl.rel='apple-touch-icon';document.head.appendChild(atl);}
-  atl.href=iconSrc||'';
+  // Manifest je statický soubor manifest.json — blob přístup odstraněn
 }
 
 function updateSettingsIconPreview(){
