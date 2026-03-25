@@ -66,7 +66,106 @@ input, select { color-scheme: dark; }
 
 /* ── FILTER PANEL ── */
 .filter-panel { background: #0a0f1e; border-bottom: 1px solid #1e293b; overflow: hidden; max-height: 0; transition: max-height 0.3s ease; }
-.filter-panel.open { max-height: 500px; }
+.filter-panel.open {
+  max-height: 80vh;
+  overflow-y: auto;
+  position: fixed;
+  bottom: 0;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 100%;
+  max-width: 480px;
+  z-index: 200;
+  border-radius: 16px 16px 0 0;
+  border-top: 2px solid #38bdf8;
+  border-bottom: none;
+  box-shadow: 0 -8px 40px rgba(0,0,0,0.7);
+}
+/* Plovoucí tlačítko scroll nahoru */
+.scroll-top-fab {
+  display: none;
+  position: fixed;
+  bottom: 24px;
+  right: 16px;
+  z-index: 150;
+  background: #1e293b;
+  border: 1px solid #475569;
+  color: #94a3b8;
+  font-size: 18px;
+  width: 46px;
+  height: 46px;
+  border-radius: 50%;
+  cursor: pointer;
+  box-shadow: 0 4px 20px rgba(0,0,0,0.6);
+  align-items: center;
+  justify-content: center;
+  transition: opacity 0.2s, background 0.15s;
+}
+.scroll-top-fab.visible { display: flex; }
+.scroll-top-fab:active { background: #38bdf8; color: #020617; }
+
+/* Indikátor řádku */
+.row-indicator {
+  display: none;
+  position: fixed;
+  bottom: 32px;
+  left: 16px;
+  z-index: 150;
+  background: rgba(15,23,42,0.92);
+  border: 1px solid #334155;
+  color: #94a3b8;
+  font-size: 12px;
+  font-weight: 700;
+  font-family: monospace;
+  padding: 7px 14px;
+  border-radius: 20px;
+  pointer-events: auto;
+  cursor: pointer;
+  box-shadow: 0 2px 12px rgba(0,0,0,0.5);
+  white-space: nowrap;
+  user-select: none;
+  transition: border-color 0.15s, color 0.15s;
+}
+.row-indicator.visible { display: block; }
+.row-indicator:active { border-color: #38bdf8; color: #38bdf8; }
+
+/* Jump to row dialog */
+.jump-overlay {
+  display: none;
+  position: fixed;
+  inset: 0;
+  background: rgba(2,6,23,0.85);
+  z-index: 500;
+  align-items: flex-end;
+  justify-content: center;
+}
+.jump-overlay.open { display: flex; }
+.jump-sheet {
+  background: #0f172a;
+  border: 1px solid #1e293b;
+  border-radius: 20px 20px 0 0;
+  border-top: 2px solid #38bdf8;
+  padding: 20px 20px 36px;
+  width: 100%;
+  max-width: 480px;
+  box-shadow: 0 -8px 40px rgba(0,0,0,0.7);
+}
+.jump-title { font-size: 11px; letter-spacing: 2px; color: #38bdf8; font-weight: 700; font-family: monospace; text-transform: uppercase; margin-bottom: 14px; }
+.jump-input-row { display: flex; gap: 10px; align-items: center; margin-bottom: 14px; }
+.jump-input {
+  flex: 1; background: #020617; border: 1px solid #334155; border-radius: 12px;
+  padding: 12px 16px; color: #e2e8f0; font-size: 22px; font-weight: 800;
+  font-family: monospace; outline: none; text-align: center;
+}
+.jump-input:focus { border-color: #38bdf8; }
+.jump-total { font-size: 13px; color: #475569; font-family: monospace; flex-shrink: 0; }
+.jump-slider { width: 100%; -webkit-appearance: none; appearance: none; height: 6px; border-radius: 6px; background: #1e293b; outline: none; cursor: pointer; margin-bottom: 16px; }
+.jump-slider::-webkit-slider-thumb { -webkit-appearance: none; width: 26px; height: 26px; border-radius: 50%; background: #38bdf8; cursor: pointer; border: 3px solid #0f172a; box-shadow: 0 2px 8px rgba(56,189,248,0.4); }
+.jump-slider::-moz-range-thumb { width: 26px; height: 26px; border-radius: 50%; background: #38bdf8; cursor: pointer; border: 3px solid #0f172a; }
+.jump-actions { display: flex; gap: 10px; }
+.jump-quick { display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 14px; }
+.jump-quick-btn { background: #1e293b; border: 1px solid #334155; border-radius: 10px; padding: 6px 12px; font-size: 12px; font-weight: 700; color: #94a3b8; cursor: pointer; font-family: monospace; }
+.jump-quick-btn:active { background: #1e3a5f; border-color: #38bdf8; color: #38bdf8; }
 .filter-inner { padding: 14px 20px; }
 .filter-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 10px; }
 .filter-group label { display: block; font-size: 10px; color: #64748b; font-weight: 700; letter-spacing: 1px; text-transform: uppercase; font-family: monospace; margin-bottom: 5px; }
@@ -74,6 +173,13 @@ input, select { color-scheme: dark; }
 .filter-input:focus { border-color: #38bdf8; }
 .filter-input::placeholder { color: #334155; }
 select.filter-input option { background: #0f172a; }
+/* ── AUTOCOMPLETE DROPDOWN ── */
+.autocomplete-wrap { position: relative; }
+.autocomplete-dd { position: absolute; top: 100%; left: 0; right: 0; background: #0f172a; border: 1px solid #38bdf8; border-top: none; border-radius: 0 0 8px 8px; z-index: 300; max-height: 180px; overflow-y: auto; display: none; box-shadow: 0 8px 24px rgba(0,0,0,0.5); }
+.autocomplete-dd.open { display: block; }
+.autocomplete-item { padding: 9px 10px; font-size: 13px; color: #cbd5e1; cursor: pointer; border-bottom: 1px solid #1e293b; }
+.autocomplete-item:last-child { border-bottom: none; }
+.autocomplete-item:hover { background: #1e3a5f; color: #38bdf8; }
 .best-filter-row { display: flex; align-items: center; gap: 10px; margin-bottom: 10px; }
 .best-filter-row label { font-size: 12px; color: #94a3b8; font-weight: 600; flex-shrink: 0; }
 .tc { background: #0f172a; border: 1px solid #1e293b; border-radius: 8px; padding: 5px 12px; font-size: 12px; font-weight: 600; color: #64748b; cursor: pointer; transition: all 0.15s; }
@@ -452,11 +558,15 @@ input:checked + .toggle-slider:before { transform: translateX(22px); background:
         <div class="filter-group"><label>Rok narození</label><input class="filter-input" id="filt-born-year" placeholder="1856" type="number" min="0" max="2100" oninput="renderList()"></div>
         <div class="filter-group"><label>Měsíc nar. (1–12)</label><input class="filter-input" id="filt-born-month" placeholder="2" type="number" min="1" max="12" oninput="renderList()"></div>
         <div class="filter-group"><label>Den nar. (1–31)</label><input class="filter-input" id="filt-born-day" placeholder="25" type="number" min="1" max="31" oninput="renderList()"></div>
-        <div class="filter-group"><label>Země původu</label><input class="filter-input" id="filt-country" placeholder="Česko..." oninput="renderList()"></div>
-        <div class="filter-group"><label>Profese</label><input class="filter-input" id="filt-profession" placeholder="Fyzik, Herec..." oninput="renderList()"></div>
-        <div class="filter-group" style="grid-column:1/-1"><label>Min. hodnocení ★</label>
+        <div class="filter-group"><label>Země původu</label><div class="autocomplete-wrap"><input class="filter-input" id="filt-country" placeholder="Česko..." autocomplete="off" oninput="showFilterSug('filt-country','country')" onblur="setTimeout(()=>hideSug('filt-country'),150)"><div class="autocomplete-dd" id="filt-country-dd"></div></div></div>
+        <div class="filter-group"><label>Profese</label><div class="autocomplete-wrap"><input class="filter-input" id="filt-profession" placeholder="Fyzik, Herec..." autocomplete="off" oninput="showFilterSug('filt-profession','profession')" onblur="setTimeout(()=>hideSug('filt-profession'),150)"><div class="autocomplete-dd" id="filt-profession-dd"></div></div></div>
+        <div class="filter-group" style="grid-column:1/-1"><label>Hodnocení ★</label>
           <select class="filter-input" id="filt-rating" onchange="renderList()">
-            <option value="">Vše</option><option value="5">★★★★★</option><option value="4">★★★★+</option><option value="3">★★★+</option><option value="2">★★+</option>
+            <option value="">Vše</option>
+            <option value="0">☆☆☆ Bez hvězdy</option>
+            <option value="1">★☆☆ Jedna</option>
+            <option value="2">★★☆ Dvě</option>
+            <option value="3">★★★ Tři</option>
           </select>
         </div>
       </div>
@@ -471,6 +581,27 @@ input:checked + .toggle-slider:before { transform: translateX(22px); background:
       <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:10px;">
         <button class="btn btn-primary btn-sm" onclick="filterBirthdayToday()">🎂 Narozeniny dnes</button>
         <button class="btn btn-ghost btn-sm" onclick="clearFilters()">✕ Vymazat filtry</button>
+      </div>
+    </div>
+  </div>
+  <button class="scroll-top-fab" id="scroll-top-fab" onclick="window.scrollTo({top:0,behavior:'smooth'})" title="Zpět nahoru">↑</button>
+  <div class="row-indicator" id="row-indicator" onclick="openJumpDialog()"></div>
+
+  <!-- Jump to row dialog -->
+  <div class="jump-overlay" id="jump-overlay" onclick="if(event.target===this)closeJumpDialog()">
+    <div class="jump-sheet">
+      <div class="jump-title">⚡ Přejít na řádek</div>
+      <div class="jump-input-row">
+        <input class="jump-input" id="jump-input" type="number" min="1" placeholder="1"
+          oninput="onJumpInput()" onkeydown="if(event.key==='Enter')doJump()">
+        <span class="jump-total" id="jump-total">/ —</span>
+      </div>
+      <input class="jump-slider" id="jump-slider" type="range" min="1" value="1"
+        oninput="onJumpSlider()">
+      <div class="jump-quick" id="jump-quick"></div>
+      <div class="jump-actions">
+        <button class="btn btn-primary" style="flex:1;justify-content:center;padding:13px;font-size:15px" onclick="doJump()">→ Jít</button>
+        <button class="btn btn-ghost" style="padding:13px 18px" onclick="closeJumpDialog()">Zrušit</button>
       </div>
     </div>
   </div>
@@ -1326,7 +1457,112 @@ function setSort(k){currentSort=k;renderSortChips();renderList();}
 function toggleFilterPanel(){filterOpen=!filterOpen;document.getElementById('filter-panel').classList.toggle('open',filterOpen);document.getElementById('filter-btn').classList.toggle('active',filterOpen||countFilters()>0);}
 function countFilters(){return[document.getElementById('filt-name')?.value,document.getElementById('filt-born-year')?.value,document.getElementById('filt-born-month')?.value,document.getElementById('filt-born-day')?.value,document.getElementById('filt-country')?.value,document.getElementById('filt-profession')?.value,document.getElementById('filt-rating')?.value,bestFilter!=='all'?'1':''].filter(Boolean).length;}
 function setBestFilter(v){bestFilter=v;['all','yes','no'].forEach(x=>{const el=document.getElementById('bf-'+x);el.className='tc'+(x===v?(v==='yes'?' ay':v==='no'?' an':' aa'):'');});renderList();updateFilterBadge();}
-function updateFilterBadge(){const n=countFilters();const b=document.getElementById('filter-n-badge');b.style.display=n?'':'none';b.textContent=n;document.getElementById('filter-btn').classList.toggle('active',filterOpen||n>0);}
+function updateFilterBadge(){
+  const n=countFilters();
+  const b=document.getElementById('filter-n-badge');
+  b.style.display=n?'':'none';b.textContent=n;
+  document.getElementById('filter-btn').classList.toggle('active',filterOpen||n>0);
+}
+
+// Plovoucí FAB nahoru + indikátor řádku
+let _cachedItemH = 0;
+window.addEventListener('scroll', ()=>{
+  const fab = document.getElementById('scroll-top-fab');
+  const ind = document.getElementById('row-indicator');
+  const visible = window.scrollY > 120;
+  if(fab) fab.classList.toggle('visible', visible);
+  if(ind){
+    if(visible && _currentFiltered.length > 0){
+      const listEl = document.getElementById('list-container');
+      if(listEl){
+        if(!_cachedItemH){
+          const first = listEl.querySelector('.list-item');
+          if(first) _cachedItemH = first.offsetHeight;
+        }
+        const itemH = _cachedItemH || 82;
+        const scrolled = window.scrollY - (listEl.offsetTop || 0);
+        const rowIdx = Math.max(0, Math.floor(scrolled / itemH));
+        const displayRow = Math.min(rowIdx + 1, _currentFiltered.length);
+        ind.textContent = displayRow + ' / ' + _currentFiltered.length;
+        ind.classList.add('visible');
+      }
+    } else {
+      ind.classList.remove('visible');
+    }
+  }
+}, {passive:true});
+
+// ── JUMP TO ROW ──
+function openJumpDialog(){
+  const total = _currentFiltered.length;
+  if(!total) return;
+  const overlay = document.getElementById('jump-overlay');
+  const inp = document.getElementById('jump-input');
+  const slider = document.getElementById('jump-slider');
+  const totalEl = document.getElementById('jump-total');
+  const quickEl = document.getElementById('jump-quick');
+  // Set current row
+  const ind = document.getElementById('row-indicator');
+  const currentRow = parseInt((ind.textContent||'').split('/')[0]) || 1;
+  inp.value = currentRow;
+  inp.max = total;
+  slider.max = total;
+  slider.value = currentRow;
+  totalEl.textContent = '/ ' + total.toLocaleString('cs');
+  // Quick jump buttons: 25%, 50%, 75%, last
+  const marks = [
+    { label: '¼', row: Math.round(total * 0.25) },
+    { label: '½', row: Math.round(total * 0.5) },
+    { label: '¾', row: Math.round(total * 0.75) },
+    { label: '⟩⟩', row: total }
+  ];
+  quickEl.innerHTML = marks.map(m =>
+    `<div class="jump-quick-btn" onclick="jumpToRow(${m.row})">${m.label}<br><span style="font-size:10px;color:#475569">${m.row.toLocaleString('cs')}</span></div>`
+  ).join('');
+  overlay.classList.add('open');
+  setTimeout(() => { inp.focus(); inp.select(); }, 100);
+}
+
+function closeJumpDialog(){
+  document.getElementById('jump-overlay').classList.remove('open');
+}
+
+function onJumpInput(){
+  const inp = document.getElementById('jump-input');
+  const slider = document.getElementById('jump-slider');
+  const v = parseInt(inp.value);
+  if(!isNaN(v)) slider.value = Math.min(Math.max(v, 1), _currentFiltered.length);
+}
+
+function onJumpSlider(){
+  const slider = document.getElementById('jump-slider');
+  document.getElementById('jump-input').value = slider.value;
+}
+
+function doJump(){
+  const v = parseInt(document.getElementById('jump-input').value);
+  if(isNaN(v)) return;
+  jumpToRow(v);
+}
+
+function jumpToRow(row){
+  const total = _currentFiltered.length;
+  const target = Math.min(Math.max(row, 1), total);
+  // Ensure enough items are rendered
+  while(_renderedCount < target && _renderedCount < total){
+    appendNextBatch();
+  }
+  const listEl = document.getElementById('list-container');
+  const items = listEl.querySelectorAll('.list-item');
+  if(!_cachedItemH && items.length){
+    _cachedItemH = items[0].offsetHeight;
+  }
+  const itemH = _cachedItemH || 82;
+  const offsetTop = listEl.offsetTop || 0;
+  const targetY = offsetTop + (target - 1) * itemH;
+  closeJumpDialog();
+  setTimeout(() => window.scrollTo({ top: targetY, behavior: 'smooth' }), 80);
+}
 function clearFilters(){['filt-name','filt-born-year','filt-born-month','filt-born-day','filt-country','filt-profession','filt-rating'].forEach(id=>{const el=document.getElementById(id);if(el)el.value='';});setBestFilter('all');renderList();updateFilterBadge();}
 function filterBirthdayToday(){
   const now=new Date();
@@ -1384,8 +1620,8 @@ function updateDatePreview(which){
   const el=document.getElementById('f-'+which+'-preview');
   if(el)el.textContent=s?('→ '+fmtDate(s)):'';
 }
-function renderStars(container,value,readonly,onChange){container.innerHTML='';for(let i=1;i<=5;i++){const s=document.createElement('span');s.className='star';s.textContent='★';s.style.fontSize=readonly?'16px':'24px';s.style.color=i<=value?'#f59e0b':'#334155';s.style.cursor=readonly?'default':'pointer';if(!readonly)s.onclick=()=>{onChange(i);renderStars(container,i,false,onChange);};container.appendChild(s);}}
-function starsHtml(r){let h='';for(let i=1;i<=5;i++)h+=`<span style="color:${i<=r?'#f59e0b':'#334155'};font-size:13px">★</span>`;return h;}
+function renderStars(container,value,readonly,onChange){container.innerHTML='';for(let i=1;i<=3;i++){const s=document.createElement('span');s.className='star';s.textContent='★';s.style.fontSize=readonly?'16px':'28px';s.style.color=i<=value?'#f59e0b':'#334155';s.style.cursor=readonly?'default':'pointer';if(!readonly)s.onclick=()=>{onChange(i);renderStars(container,i,false,onChange);};container.appendChild(s);}}
+function starsHtml(r){let h='';for(let i=1;i<=3;i++)h+=`<span style="color:${i<=r?'#f59e0b':'#334155'};font-size:13px">★</span>`;return h;}
 
 // Get main photo src for a person
 function mainPhotoSrc(p){
@@ -1539,6 +1775,58 @@ async function detectAllFocalPoints(){
   renderList();
 }
 
+// ── AUTOCOMPLETE PRO FILTRY ──
+function getFilterSuggestions(field, query){
+  const q = (query||'').normalize('NFD').replace(/[̀-ͯ]/g,'').toLowerCase().trim();
+  const seen = new Map(); // normalized → original (first occurrence)
+  people.forEach(p => {
+    const raw = (p[field]||'').trim();
+    if(!raw) return;
+    // Profese může mít více hodnot oddělených čárkou
+    const parts = field === 'profession' ? raw.split(/[,;]/).map(s=>s.trim()).filter(Boolean) : [raw];
+    parts.forEach(part => {
+      // Heuristika pro pole Země: přeskočit hodnoty, které vypadají jako jméno osoby
+      // (2+ slov kde každé začíná velkým písmenem, nebo hodnota delší než 40 znaků)
+      if(field === 'country'){
+        if(part.length > 40) return;
+        const words = part.trim().split(/\s+/);
+        const looksLikeName = words.length >= 2 && words.every(w => /^[A-ZÁČĎÉĚÍŇÓŘŠŤÚŮÝŽ]/.test(w));
+        if(looksLikeName) return;
+      }
+      const norm = part.normalize('NFD').replace(/[̀-ͯ]/g,'').toLowerCase();
+      if(!q || norm.includes(q)){
+        if(!seen.has(norm)) seen.set(norm, part);
+      }
+    });
+  });
+  return [...seen.values()].sort((a,b)=>a.localeCompare(b,'cs')).slice(0,25);
+}
+
+function showFilterSug(inputId, field){
+  renderList(); updateFilterBadge();
+  const input = document.getElementById(inputId);
+  const dd    = document.getElementById(inputId+'-dd');
+  if(!input||!dd) return;
+  const q = input.value.trim();
+  const items = getFilterSuggestions(field, q);
+  if(!items.length){ dd.classList.remove('open'); return; }
+  dd.innerHTML = items.map(s =>
+    `<div class="autocomplete-item" onmousedown="pickFilterSug('${inputId}',${JSON.stringify(s)})">${s}</div>`
+  ).join('');
+  dd.classList.add('open');
+}
+
+function hideSug(inputId){
+  const dd = document.getElementById(inputId+'-dd');
+  if(dd) dd.classList.remove('open');
+}
+
+function pickFilterSug(inputId, val){
+  const input = document.getElementById(inputId);
+  if(input){ input.value = val; renderList(); updateFilterBadge(); }
+  hideSug(inputId);
+}
+
 // ── LIST ──
 
 // ── DEBOUNCE for search ──
@@ -1621,7 +1909,8 @@ function getFiltered(){
   const fbDay=parseInt(document.getElementById('filt-born-day')?.value||'')||0;
   const fc=(document.getElementById('filt-country')?.value||'').toLowerCase();
   const fp=(document.getElementById('filt-profession')?.value||'').toLowerCase();
-  const fr=parseInt(document.getElementById('filt-rating')?.value||'')||0;
+  const frRaw = document.getElementById('filt-rating')?.value ?? '';
+  const frExact = frRaw !== '' ? parseInt(frRaw) : null;
   
   return people.filter(p=>{
     // Main search: fuzzy
@@ -1644,7 +1933,7 @@ function getFiltered(){
     }
     if(fc&&!norm(p.country||'').includes(norm(fc)))return false;
     if(fp&&!norm(p.profession||'').includes(norm(fp)))return false;
-    if(fr&&(p.rating||0)<fr)return false;
+    if(frExact!==null&&(p.rating||0)!==frExact)return false;
     if(bestFilter==='yes'&&!p.best)return false;
     if(bestFilter==='no'&&p.best)return false;
     return true;
@@ -1731,6 +2020,7 @@ function renderList(){
   const listEl = document.getElementById('list-container');
   listEl.className = selectMode ? 'select-mode' : '';
   c.innerHTML = '';
+  window.scrollTo(0, 0);
   appendNextBatch(); // render first PAGE_SIZE items immediately
   updateSelectBar();
 }
@@ -3114,7 +3404,8 @@ async function exportData(){
       exported: new Date().toISOString(),
       people: people,
       settings: appSettings,
-      lock: { pin: lockState.pin }
+      lock: { pin: lockState.pin },
+      globalLinks: globalLinks
     };
     const json = JSON.stringify(allData, null, 2);
     const blob = new Blob([json], {type:'application/json'});
@@ -3157,6 +3448,11 @@ async function importData(event){
       saveLockState();
       updateSecurityUI();
     }
+    if(data.globalLinks && Array.isArray(data.globalLinks)){
+      globalLinks = data.globalLinks;
+      await saveGlobalLinks();
+      renderGlobalLinks();
+    }
     renderList();
     showView('list');
     alert(`✓ Importováno ${count} záznamů.`);
@@ -3169,6 +3465,17 @@ async function importData(event){
 // Wait for full DOM before init
 async function appInit(){
   await loadData();
+  // ── Migrace hodnocení 5→3 hvězdy (jednorázová) ──
+  // Mapa: staré → nové: 5→3, 4→2, 3→1, 2→1, 1→1, 0→0
+  const ratingMap = {5:3, 4:2, 3:1, 2:1, 1:1, 0:0};
+  let migrated = false;
+  people.forEach(p => {
+    if((p.rating||0) > 3){
+      p.rating = ratingMap[p.rating] ?? 3;
+      migrated = true;
+    }
+  });
+  if(migrated) await saveData();
   await loadGlobalLinks();
   loadSettings();
   // Synchronně nastaví manifest se správnou ikonou — stejný vzor jako Hokejbal
