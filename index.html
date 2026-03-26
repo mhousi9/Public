@@ -10,29 +10,13 @@
 <meta name="theme-color" content="#020617">
 <link rel="manifest" href="./manifest.json">
 <title>Osobnosti</title>
-<script src="https://cdn.jsdelivr.net/npm/mammoth@1.6.0/mammoth.browser.min.js"></script>
 <script>
 // ── SERVICE WORKER ──
 if('serviceWorker' in navigator){
   navigator.serviceWorker.register('./sw.js', {scope:'./'}).catch(()=>{});
 }
 
-// ── INSTALL PROMPT ──
-let _installPrompt = null;
-window.addEventListener('beforeinstallprompt', e => {
-  e.preventDefault(); _installPrompt = e;
-  const btn = document.getElementById('install-pwa-btn');
-  if(btn) btn.style.display = '';
-});
-window.addEventListener('appinstalled', () => {
-  const btn = document.getElementById('install-pwa-btn');
-  if(btn) btn.style.display = 'none';
-  _installPrompt = null;
-});
-function triggerInstall(){
-  if(_installPrompt){ _installPrompt.prompt(); _installPrompt.userChoice.then(()=>{_installPrompt=null;}); }
-  else { alert('Instalace:\n• iOS Safari: Sdílet → Přidat na plochu\n• Android Chrome: Menu ⋮ → Přidat na plochu\n• PC Chrome/Edge: Ikona instalace v adresním řádku'); }
-}
+
 </script>
 <style>
 * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; margin: 0; padding: 0; }
@@ -537,7 +521,6 @@ input:checked + .toggle-slider:before { transform: translateX(22px); background:
       </div>
       <div style="display:flex;gap:8px;align-items:center">
         <button class="btn btn-ghost btn-sm" id="select-mode-btn" onclick="toggleSelectMode()" style="padding:9px 12px">☑</button>
-        <label class="btn btn-ghost btn-sm" title="Importovat DOCX" style="padding:9px 12px;font-size:15px;cursor:pointer">📄<input type="file" accept=".docx,application/vnd.openxmlformats-officedocument.wordprocessingml.document" style="display:none" onchange="importDocx(event)"></label>
         <button class="btn btn-ghost btn-sm" onclick="openSettings()" style="padding:9px 12px;font-size:16px">⚙️</button>
         <button class="btn btn-ghost btn-sm" onclick="showView('links')" style="padding:9px 12px;font-size:15px" title="Odkazy">🔗</button>
         <button class="btn btn-primary" onclick="openNew()">＋ Přidat</button>
@@ -894,13 +877,6 @@ input:checked + .toggle-slider:before { transform: translateX(22px); background:
     <!-- Accent color -->
     <div class="settings-section-title">Barva zvýraznění</div>
     <div class="color-grid" id="color-grid"></div>
-
-    <!-- Install PWA -->
-    <div class="settings-section-title">📲 Instalace aplikace</div>
-    <div class="info-card" style="margin-bottom:8px">
-      <div style="font-size:13px;color:#64748b;margin-bottom:10px">Přidej aplikaci na plochu telefonu nebo PC pro použití bez prohlížeče.</div>
-      <button class="btn btn-primary btn-full" onclick="triggerInstall()">📲 Přidat na plochu</button>
-    </div>
 
     <!-- Data export/import -->
     <div class="settings-section-title">💾 Záloha a přenos dat</div>
@@ -1445,12 +1421,20 @@ function showView(n){
   lbReset(false);
   document.querySelectorAll('.view').forEach(v=>v.classList.remove('active'));
   document.getElementById('view-'+n).classList.add('active');
-  window.scrollTo(0,0);
+  if(n === 'list'){
+    requestAnimationFrame(() => window.scrollTo(0, _listScrollY));
+  } else {
+    window.scrollTo(0,0);
+  }
 }
 
 // ── SORT ──
-const SORTS=[{k:'newest',l:'🕐 Nejnovější'},{k:'name',l:'A–Z Jméno'},{k:'nameZ',l:'Z–A Jméno'},{k:'rating',l:'★ Hodnocení'},{k:'best',l:'⭐ Best'}];
-function renderSortChips(){document.getElementById('sort-row').innerHTML=SORTS.map(s=>`<div class="chip ${currentSort===s.k?'active':''}" onclick="setSort('${s.k}')">${s.l}</div>`).join('');}
+const SORTS=[{k:'newest',l:'🕐 Nejnovější'},{k:'name',l:'A–Z Jméno'},{k:'rating',l:'★ Hodnocení'},{k:'best',l:'⭐ Best'}];
+function renderSortChips(){
+  const chips = SORTS.map(s=>`<div class="chip ${currentSort===s.k?'active':''}" onclick="setSort('${s.k}')">${s.l}</div>`).join('');
+  const lastChip = `<div class="chip" id="chip-last" onclick="scrollToLastEdited()">✏️ Poslední</div>`;
+  document.getElementById('sort-row').innerHTML = chips + lastChip;
+}
 function setSort(k){currentSort=k;renderSortChips();renderList();}
 
 // ── FILTERS ──
@@ -1833,6 +1817,7 @@ function pickFilterSug(inputId, val){
 let _searchTimer = null;
 function debouncedSearch(){
   clearTimeout(_searchTimer);
+  _listScrollY = 0;
   _searchTimer = setTimeout(renderList, 200);
 }
 
@@ -1942,8 +1927,27 @@ function getFiltered(){
 function getSorted(arr){const a=[...arr];// If fuzzy search active, sort by score first
 if(a.length&&a[0]._fuzzyScore!==undefined&&document.getElementById('search-input')?.value.trim()){return a.sort((x,y)=>(y._fuzzyScore||0)-(x._fuzzyScore||0));}
 if(currentSort==='name')return a.sort((x,y)=>x.name.localeCompare(y.name,'cs'));
-if(currentSort==='nameZ')return a.sort((x,y)=>y.name.localeCompare(x.name,'cs'));
 if(currentSort==='rating')return a.sort((x,y)=>(y.rating||0)-(x.rating||0));if(currentSort==='best')return a.sort((x,y)=>(y.best?1:0)-(x.best?1:0));if(currentSort==='born')return a.sort((x,y)=>(x.born||'9999')<(y.born||'9999')?-1:1);return a.sort((x,y)=>y.id-x.id);}
+
+function scrollToLastEdited(){
+  // Find person with highest updatedAt (fallback to id)
+  const last = people.reduce((best, p) => (p.updatedAt||p.id) > (best.updatedAt||best.id) ? p : best, people[0]);
+  if(!last) return;
+  const idx = _currentFiltered.findIndex(p => p.id === last.id);
+  if(idx === -1){
+    // Not in current filtered view — show toast
+    showToast('Poslední upravená osoba není ve výsledcích aktuálního filtru', 3000);
+    return;
+  }
+  // Render enough batches to include this index
+  while(_renderedCount <= idx && _renderedCount < _currentFiltered.length){
+    appendNextBatch();
+  }
+  requestAnimationFrame(() => {
+    const el = document.querySelector(`[data-id="${last.id}"]`);
+    if(el) el.scrollIntoView({behavior:'smooth', block:'center'});
+  });
+}
 
 // ── VIRTUAL SCROLL ──
 const PAGE_SIZE = 40; // items per render batch
@@ -2027,7 +2031,10 @@ function renderList(){
 
 
 // ── DETAIL ──
+let _listScrollY = 0;
+
 function openDetail(id){
+  _listScrollY = window.scrollY;
   selectedId=id; const p=people.find(x=>x.id===id); if(!p)return;
   const bc=p.best?'#d97706':'#38bdf8';
   const mainSrc=mainPhotoSrc(p);
@@ -2695,8 +2702,8 @@ function submitForm(){
     photo:formPhotos.length?(formPhotos.find(x=>x.main)||formPhotos[0]).src:'',
     website:formLinks.length?formLinks[0].url:''
   };
-  if(isNew){people.push({...data,id:Date.now()});}
-  else{const i=people.findIndex(x=>x.id===selectedId);if(i>=0)people[i]={...data,id:selectedId};}
+  if(isNew){people.push({...data,id:Date.now(),updatedAt:Date.now()});}
+  else{const i=people.findIndex(x=>x.id===selectedId);if(i>=0)people[i]={...data,id:selectedId,updatedAt:Date.now()};}
   saveData();renderList();
   if(isNew){showView('list');}else{openDetail(selectedId);}
 }
