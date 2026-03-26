@@ -527,7 +527,11 @@ input:checked + .toggle-slider:before { transform: translateX(22px); background:
       </div>
     </div>
     <div class="search-row">
-      <input class="search-input" id="search-input" placeholder="Hledat..." oninput="debouncedSearch()">
+      <div style="position:relative;flex:1;display:flex;align-items:center">
+        <input class="search-input" id="search-input" placeholder="Hledat..." oninput="debouncedSearch()" style="width:100%;padding-right:72px">
+        <button id="search-clear-btn" onclick="clearSearch()" style="display:none;position:absolute;right:40px;background:none;border:none;color:#64748b;font-size:16px;cursor:pointer;padding:4px 6px;line-height:1">✕</button>
+        <button onclick="pasteToSearch()" style="position:absolute;right:6px;background:none;border:none;color:#64748b;font-size:14px;cursor:pointer;padding:4px 6px;line-height:1" title="Vložit ze schránky">📋</button>
+      </div>
       <button class="filter-btn" id="filter-btn" onclick="toggleFilterPanel()">
         ⚙ Filtry <span class="n-badge" id="filter-n-badge" style="display:none"></span>
       </button>
@@ -1818,7 +1822,30 @@ let _searchTimer = null;
 function debouncedSearch(){
   clearTimeout(_searchTimer);
   _listScrollY = 0;
+  const val = document.getElementById('search-input').value;
+  const btn = document.getElementById('search-clear-btn');
+  if(btn) btn.style.display = val ? '' : 'none';
   _searchTimer = setTimeout(renderList, 200);
+}
+function clearSearch(){
+  const inp = document.getElementById('search-input');
+  inp.value = '';
+  const btn = document.getElementById('search-clear-btn');
+  if(btn) btn.style.display = 'none';
+  _listScrollY = 0;
+  renderList();
+  inp.focus();
+}
+async function pasteToSearch(){
+  try {
+    const text = await navigator.clipboard.readText();
+    const inp = document.getElementById('search-input');
+    inp.value = text.trim();
+    debouncedSearch();
+    inp.focus();
+  } catch(e) {
+    showToast('Přístup ke schránce zamítnut', 2000);
+  }
 }
 
 // ── FUZZY SEARCH ──
@@ -2624,19 +2651,59 @@ function addPhotoByUrl(){
 }
 
 // ── FORM LINKS ──
+function getLinkLabelSuggestions(){
+  const seen = new Set();
+  people.forEach(p => (p.links||[]).forEach(l => { if(l.label) seen.add(l.label); }));
+  formLinks.forEach(l => { if(l.label) seen.add(l.label); });
+  return [...seen].sort();
+}
+
 function renderFormLinks(){
   const list=document.getElementById('form-links-list');
   if(!formLinks.length){list.innerHTML='';return;}
-  list.innerHTML=formLinks.map((l,i)=>`
+  const allLabels = getLinkLabelSuggestions();
+  list.innerHTML=formLinks.map((l,i)=>{
+    const ddId = `link-label-dd-${i}`;
+    return `
     <div class="link-form-item">
-      <div class="link-form-row">
-        <input class="link-form-input" placeholder="Popisek (např. Wikipedia)" value="${l.label||''}" oninput="formLinks[${i}].label=this.value">
+      <div class="link-form-row" style="position:relative">
+        <input class="link-form-input" id="link-label-inp-${i}" placeholder="Popisek (např. Wikipedia)" value="${(l.label||'').replace(/"/g,'&quot;')}"
+          autocomplete="off"
+          oninput="formLinks[${i}].label=this.value;showLinkLabelSug(${i})"
+          onfocus="showLinkLabelSug(${i})"
+          onblur="setTimeout(()=>hideLinkLabelSug(${i}),150)">
+        <div class="autocomplete-dd" id="${ddId}"></div>
         <button class="link-del-btn" onclick="removeFormLink(${i})">✕</button>
       </div>
       <div class="link-form-row">
-        <input class="link-form-input" placeholder="https://..." value="${l.url||''}" oninput="formLinks[${i}].url=this.value">
+        <input class="link-form-input" placeholder="https://..." value="${(l.url||'').replace(/"/g,'&quot;')}" oninput="formLinks[${i}].url=this.value">
       </div>
-    </div>`).join('');
+    </div>`;
+  }).join('');
+}
+
+function showLinkLabelSug(i){
+  const inp = document.getElementById(`link-label-inp-${i}`);
+  const dd = document.getElementById(`link-label-dd-${i}`);
+  if(!inp||!dd) return;
+  const val = inp.value.toLowerCase();
+  const all = getLinkLabelSuggestions();
+  const matches = all.filter(s => s.toLowerCase().includes(val) && s !== inp.value);
+  if(!matches.length){ dd.classList.remove('open'); return; }
+  dd.innerHTML = matches.slice(0,8).map(s =>
+    `<div class="autocomplete-item" onmousedown="pickLinkLabel(${i},'${s.replace(/'/g,"\\'")}')">${s}</div>`
+  ).join('');
+  dd.classList.add('open');
+}
+function hideLinkLabelSug(i){
+  const dd = document.getElementById(`link-label-dd-${i}`);
+  if(dd) dd.classList.remove('open');
+}
+function pickLinkLabel(i, val){
+  formLinks[i].label = val;
+  renderFormLinks();
+  // focus url field of same item after picking
+  setTimeout(()=>{ const u = document.querySelectorAll('.link-form-input')[i*2+1]; if(u) u.focus(); }, 50);
 }
 function addLinkField(){formLinks.push({label:'',url:''});renderFormLinks();}
 function removeFormLink(i){formLinks.splice(i,1);renderFormLinks();}
@@ -3416,13 +3483,29 @@ async function exportData(){
     };
     const json = JSON.stringify(allData, null, 2);
     const blob = new Blob([json], {type:'application/json'});
+    const ds = new Date().toISOString().slice(0,10);
+    const filename = `osobnosti-zaloha-${ds}.json`;
+
+    // Try File System Access API (Chrome/Edge Android & Desktop) — lets user pick folder
+    if(window.showSaveFilePicker){
+      try {
+        const fh = await window.showSaveFilePicker({
+          suggestedName: filename,
+          types: [{ description: 'JSON záloha', accept: {'application/json': ['.json']} }]
+        });
+        const writable = await fh.createWritable();
+        await writable.write(blob);
+        await writable.close();
+        showToast('✓ Export uložen', 2500);
+        return;
+      } catch(e) {
+        if(e.name === 'AbortError') return; // user cancelled — don't fallback
+      }
+    }
+    // Fallback: standard download (iOS Safari, Firefox, …)
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
-    const d = new Date();
-    const ds = d.toISOString().slice(0,10);
-    a.href = url;
-    a.download = `osobnosti-zaloha-${ds}.json`;
-    a.click();
+    a.href = url; a.download = filename; a.click();
     URL.revokeObjectURL(url);
   } catch(e) {
     alert('Export selhal: '+e.message);
