@@ -1536,20 +1536,40 @@ function doJump(){
 function jumpToRow(row){
   const total = _currentFiltered.length;
   const target = Math.min(Math.max(row, 1), total);
-  // Ensure enough items are rendered
-  while(_renderedCount < target && _renderedCount < total){
-    appendNextBatch();
-  }
-  const listEl = document.getElementById('list-container');
-  const items = listEl.querySelectorAll('.list-item');
-  if(!_cachedItemH && items.length){
-    _cachedItemH = items[0].offsetHeight;
-  }
   const itemH = _cachedItemH || 82;
-  const offsetTop = listEl.offsetTop || 0;
+  const listEl = document.getElementById('list-container');
+  const offsetTop = listEl ? (listEl.offsetTop || 0) : 0;
   const targetY = offsetTop + (target - 1) * itemH;
+
   closeJumpDialog();
-  setTimeout(() => window.scrollTo({ top: targetY, behavior: 'smooth' }), 80);
+
+  // If target row is already rendered — just scroll
+  if(_renderedCount >= target){
+    window.scrollTo({ top: targetY, behavior: 'smooth' });
+    return;
+  }
+
+  // Jump far ahead: instantly scroll (no smooth — avoids jank on large distance)
+  // Then render on demand via IntersectionObserver
+  window.scrollTo({ top: targetY, behavior: 'instant' });
+
+  // Render enough batches in next microtask so the viewport isn't blank
+  requestAnimationFrame(() => {
+    const needed = target + PAGE_SIZE;
+    let safety = 0;
+    while(_renderedCount < needed && _renderedCount < total && safety++ < 500){
+      appendNextBatch();
+    }
+    // Refine scroll after render (heights now known)
+    requestAnimationFrame(() => {
+      const listEl2 = document.getElementById('list-container');
+      const first = listEl2 && listEl2.querySelector('.list-item');
+      if(first && !_cachedItemH) _cachedItemH = first.offsetHeight;
+      const h2 = _cachedItemH || 82;
+      const off2 = listEl2 ? (listEl2.offsetTop || 0) : 0;
+      window.scrollTo({ top: off2 + (target - 1) * h2, behavior: 'instant' });
+    });
+  });
 }
 function clearFilters(){['filt-name','filt-born-year','filt-born-month','filt-born-day','filt-country','filt-profession','filt-rating'].forEach(id=>{const el=document.getElementById(id);if(el)el.value='';});setBestFilter('all');renderList();updateFilterBadge();}
 function filterBirthdayToday(){
@@ -1962,17 +1982,39 @@ function scrollToLastEdited(){
   if(!last) return;
   const idx = _currentFiltered.findIndex(p => p.id === last.id);
   if(idx === -1){
-    // Not in current filtered view — show toast
     showToast('Poslední upravená osoba není ve výsledcích aktuálního filtru', 3000);
     return;
   }
-  // Render enough batches to include this index
-  while(_renderedCount <= idx && _renderedCount < _currentFiltered.length){
-    appendNextBatch();
-  }
+
+  const itemH = _cachedItemH || 82;
+  const listEl = document.getElementById('list-container');
+  const offsetTop = listEl ? (listEl.offsetTop || 0) : 0;
+  const targetY = offsetTop + idx * itemH;
+
+  // Instantly jump to estimated position
+  window.scrollTo({ top: targetY, behavior: 'instant' });
+
+  // Render needed batches in next frame (non-blocking)
   requestAnimationFrame(() => {
-    const el = document.querySelector(`[data-id="${last.id}"]`);
-    if(el) el.scrollIntoView({behavior:'smooth', block:'center'});
+    const needed = idx + 1 + PAGE_SIZE;
+    let safety = 0;
+    while(_renderedCount < needed && _renderedCount < _currentFiltered.length && safety++ < 500){
+      appendNextBatch();
+    }
+    requestAnimationFrame(() => {
+      const el = document.querySelector(`[data-id="${last.id}"]`);
+      if(el){
+        el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      } else {
+        // fallback: recalc with real item height
+        const listEl2 = document.getElementById('list-container');
+        const first = listEl2 && listEl2.querySelector('.list-item');
+        if(first && !_cachedItemH) _cachedItemH = first.offsetHeight;
+        const h2 = _cachedItemH || 82;
+        const off2 = listEl2 ? (listEl2.offsetTop || 0) : 0;
+        window.scrollTo({ top: off2 + idx * h2, behavior: 'smooth' });
+      }
+    });
   });
 }
 
@@ -2011,17 +2053,36 @@ function appendNextBatch(){
     div.innerHTML = makeListItemHtml(p).trim();
     frag.appendChild(div.firstChild);
   });
-  // Remove sentinel if exists
+  // Remove sentinel + spacer if exist
   const sentinel = document.getElementById('scroll-sentinel');
   if(sentinel) sentinel.remove();
+  const spacer = document.getElementById('list-spacer');
+  if(spacer) spacer.remove();
+
   c.appendChild(frag);
   _renderedCount += batch.length;
-  // Add new sentinel if more items remain
-  if(_renderedCount < _currentFiltered.length){
+
+  // Cache item height after first real render
+  if(!_cachedItemH){
+    const first = c.querySelector('.list-item');
+    if(first) _cachedItemH = first.offsetHeight;
+  }
+
+  const itemH = _cachedItemH || 82;
+  const remaining = _currentFiltered.length - _renderedCount;
+
+  if(remaining > 0){
+    // Spacer represents unrendered items so scrollbar length is correct
+    const sp = document.createElement('div');
+    sp.id = 'list-spacer';
+    sp.style.height = (remaining * itemH) + 'px';
+
     const s = document.createElement('div');
     s.id = 'scroll-sentinel';
     s.style.height = '1px';
+    // sentinel before spacer so it fires before the "blank" area
     c.appendChild(s);
+    c.appendChild(sp);
     _scrollObserver.observe(s);
   }
 }
@@ -2063,6 +2124,15 @@ let _listScrollY = 0;
 function openDetail(id){
   _listScrollY = window.scrollY;
   selectedId=id; const p=people.find(x=>x.id===id); if(!p)return;
+
+  // Switch view immediately so user sees response
+  hideDeleteConfirm(); showView('detail');
+
+  // Defer heavy rendering to next frame to avoid jank
+  requestAnimationFrame(() => { _renderDetailContent(p); });
+}
+
+function _renderDetailContent(p){
   const bc=p.best?'#d97706':'#38bdf8';
   const mainSrc=mainPhotoSrc(p);
 
@@ -2137,12 +2207,11 @@ function openDetail(id){
   } else { linksSec.style.display='none'; }
 
   // Nav prev/next
-  const navIdx=detailNavList.indexOf(id);
+  const navIdx=detailNavList.indexOf(p.id);
   const prevBtn=document.getElementById('detail-prev-btn');
   const nextBtn=document.getElementById('detail-next-btn');
   if(prevBtn){prevBtn.disabled=navIdx<=0;}
   if(nextBtn){nextBtn.disabled=navIdx<0||navIdx>=detailNavList.length-1;}
-  hideDeleteConfirm(); showView('detail');
 }
 
 // ── GALLERY ──
