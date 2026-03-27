@@ -743,7 +743,13 @@ input:checked + .toggle-slider:before { transform: translateX(22px); background:
 
     <div class="form-group"><label class="form-label">Jméno *</label><input class="form-input" id="f-name" placeholder="Celé jméno"></div>
     <div class="form-group"><label class="form-label">Alias / Přezdívka</label><input class="form-input" id="f-alias" placeholder="Přezdívka nebo titul"></div>
-    <div class="form-group"><label class="form-label">Profese</label><input class="form-input" id="f-profession" placeholder="Vynálezce, Fyzik, ..."></div>
+    <div class="form-group">
+      <label class="form-label">Profese</label>
+      <div style="position:relative">
+        <input class="form-input" id="f-profession" placeholder="Vynálezce, Fyzik, ..." oninput="onProfessionInput(this)" autocomplete="off">
+        <div id="profession-suggestions" style="display:none;position:absolute;top:100%;left:0;right:0;background:#1e293b;border:1px solid #38bdf8;border-radius:0 0 10px 10px;z-index:50;max-height:200px;overflow-y:auto;margin-top:-1px"></div>
+      </div>
+    </div>
     <div class="form-group">
       <label class="form-label">Země původu</label>
       <div style="position:relative">
@@ -2910,6 +2916,50 @@ function getFlagForCountry(text){
   }
   return null;
 }
+
+function onProfessionInput(el){
+  const val = el.value;
+  const sug = document.getElementById('profession-suggestions');
+  // Find last segment after comma (support "Fyzik, Herec, ...")
+  const parts = val.split(',');
+  const lastPart = parts[parts.length - 1].trim().toLowerCase();
+  if(!lastPart){ sug.style.display='none'; return; }
+  const seen = new Set();
+  const matches = [];
+  people.forEach(p => {
+    if(!p.profession) return;
+    p.profession.split(/[,;]/).forEach(s => {
+      const t = s.trim();
+      const tn = t.normalize('NFD').replace(/[̀-ͯ]/g,'').toLowerCase();
+      if(t && tn.includes(lastPart) && !seen.has(tn)){
+        seen.add(tn); matches.push(t);
+      }
+    });
+  });
+  matches.sort((a,b)=>a.localeCompare(b,'cs'));
+  const top = matches.slice(0,10);
+  if(!top.length){ sug.style.display='none'; return; }
+  sug.style.display='block';
+  sug.innerHTML = top.map(t =>
+    `<div onclick="selectProfession(${JSON.stringify(t)})" style="padding:10px 14px;cursor:pointer;font-size:14px;border-bottom:1px solid #334155" onmouseenter="this.style.background='#334155'" onmouseleave="this.style.background=''">${t}</div>`
+  ).join('');
+}
+
+function selectProfession(val){
+  const el = document.getElementById('f-profession');
+  const parts = el.value.split(',');
+  parts[parts.length - 1] = ' ' + val;
+  el.value = parts.join(',').replace(/^,\s*/, '').replace(/,\s*,/g, ',');
+  document.getElementById('profession-suggestions').style.display='none';
+  el.focus();
+}
+
+document.addEventListener('click', e => {
+  if(!e.target.closest('#f-profession') && !e.target.closest('#profession-suggestions')){
+    const s = document.getElementById('profession-suggestions');
+    if(s) s.style.display='none';
+  }
+});
 
 function onCountryInput(el){
   const val=el.value;
