@@ -2941,7 +2941,7 @@ function onProfessionInput(el){
   if(!top.length){ sug.style.display='none'; return; }
   sug.style.display='block';
   sug.innerHTML = top.map(t =>
-    `<div onclick="selectProfession(${JSON.stringify(t)})" style="padding:10px 14px;cursor:pointer;font-size:14px;border-bottom:1px solid #334155" onmouseenter="this.style.background='#334155'" onmouseleave="this.style.background=''">${t}</div>`
+    `<div onmousedown="event.preventDefault();selectProfession('${t.replace(/\\/g,'\\\\').replace(/'/g,"\\'")}')" style="padding:10px 14px;cursor:pointer;font-size:14px;border-bottom:1px solid #334155" onmouseenter="this.style.background='#334155'" onmouseleave="this.style.background=''">${t}</div>`
   ).join('');
 }
 
