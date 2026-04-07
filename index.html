@@ -893,8 +893,9 @@ input:checked + .toggle-slider:before { transform: translateX(22px); background:
     <div class="info-card" style="margin-bottom:8px">
       <div style="font-size:13px;color:#64748b;margin-bottom:10px">Exportuj všechna data do souboru. Soubor lze načíst na jiném zařízení (PC, tablet…) — stačí otevřít aplikaci a importovat.</div>
       <div style="display:flex;gap:8px;flex-wrap:wrap">
-        <button class="btn btn-secondary" style="flex:1;min-width:120px;justify-content:center" onclick="exportData()">⬇ Export dat</button>
-        <label class="btn btn-ghost" style="flex:1;min-width:120px;justify-content:center;cursor:pointer">⬆ Import dat<input type="file" accept=".json" style="display:none" onchange="importData(event)"></label>
+        <button class="btn btn-secondary" style="flex:1;min-width:100px;justify-content:center" onclick="exportData()">⬇ JSON</button>
+        <button class="btn btn-secondary" style="flex:1;min-width:100px;justify-content:center" onclick="exportDataJsonl()">⬇ JSONL</button>
+        <label class="btn btn-ghost" style="flex:1;min-width:120px;justify-content:center;cursor:pointer">⬆ Import<input type="file" accept=".json,.jsonl" style="display:none" onchange="importData(event)"></label>
       </div>
     </div>
 
@@ -3590,6 +3591,27 @@ function showSearchEngineSheet(query){
 }
 
 // ── EXPORT / IMPORT DATA ──
+
+// Shared helper — trigger download from Blob
+async function _triggerDownload(blob, filename, pickerOpts, toastMsg){
+  if(window.showSaveFilePicker){
+    try {
+      const fh = await window.showSaveFilePicker({ suggestedName: filename, types: [pickerOpts] });
+      const writable = await fh.createWritable();
+      await writable.write(blob);
+      await writable.close();
+      showToast(toastMsg, 2500);
+      return;
+    } catch(e) {
+      if(e.name === 'AbortError') return;
+    }
+  }
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url; a.download = filename; a.click();
+  URL.revokeObjectURL(url);
+}
+
 async function exportData(){
   try {
     const allData = {
@@ -3600,35 +3622,40 @@ async function exportData(){
       lock: { pin: lockState.pin },
       globalLinks: globalLinks
     };
-    const json = JSON.stringify(allData, null, 2);
-    const blob = new Blob([json], {type:'application/json'});
+    const blob = new Blob([JSON.stringify(allData, null, 2)], {type:'application/json'});
     const ds = new Date().toISOString().slice(0,10);
-    const filename = `osobnosti-zaloha-${ds}.json`;
+    await _triggerDownload(
+      blob,
+      `osobnosti-zaloha-${ds}.json`,
+      { description: 'JSON záloha', accept: {'application/json': ['.json']} },
+      '✓ Export JSON uložen'
+    );
+  } catch(e) { alert('Export selhal: '+e.message); }
+}
 
-    // Try File System Access API (Chrome/Edge Android & Desktop) — lets user pick folder
-    if(window.showSaveFilePicker){
-      try {
-        const fh = await window.showSaveFilePicker({
-          suggestedName: filename,
-          types: [{ description: 'JSON záloha', accept: {'application/json': ['.json']} }]
-        });
-        const writable = await fh.createWritable();
-        await writable.write(blob);
-        await writable.close();
-        showToast('✓ Export uložen', 2500);
-        return;
-      } catch(e) {
-        if(e.name === 'AbortError') return; // user cancelled — don't fallback
-      }
-    }
-    // Fallback: standard download (iOS Safari, Firefox, …)
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url; a.download = filename; a.click();
-    URL.revokeObjectURL(url);
-  } catch(e) {
-    alert('Export selhal: '+e.message);
-  }
+async function exportDataJsonl(){
+  try {
+    // Line 0: metadata (settings, lock, globalLinks)
+    const meta = {
+      _type: 'meta',
+      version: 1,
+      exported: new Date().toISOString(),
+      settings: appSettings,
+      lock: { pin: lockState.pin },
+      globalLinks: globalLinks
+    };
+    const lines = [JSON.stringify(meta)];
+    // Lines 1…N: one person per line
+    for(const p of people) lines.push(JSON.stringify(p));
+    const blob = new Blob([lines.join('\n')], {type:'application/x-ndjson'});
+    const ds = new Date().toISOString().slice(0,10);
+    await _triggerDownload(
+      blob,
+      `osobnosti-zaloha-${ds}.jsonl`,
+      { description: 'JSONL záloha', accept: {'application/x-ndjson': ['.jsonl']} },
+      '✓ Export JSONL uložen'
+    );
+  } catch(e) { alert('Export selhal: '+e.message); }
 }
 
 async function importData(event){
@@ -3637,28 +3664,55 @@ async function importData(event){
   if(!file) return;
   try {
     const text = await file.text();
-    const data = JSON.parse(text);
-    // Validate
-    if(!data.people || !Array.isArray(data.people)){
-      alert('Neplatný soubor zálohy.');
-      return;
+    const isJsonl = file.name.toLowerCase().endsWith('.jsonl');
+
+    let importedPeople, importedSettings, importedLock, importedGlobalLinks;
+
+    if(isJsonl){
+      // ── JSONL format ──
+      // Line 0 = meta object, lines 1…N = person objects
+      const lines = text.split('\n').map(l=>l.trim()).filter(Boolean);
+      if(!lines.length){ alert('Soubor je prázdný.'); return; }
+      let firstPeopleLine = 0;
+      const first = JSON.parse(lines[0]);
+      if(first._type === 'meta'){
+        importedSettings    = first.settings;
+        importedLock        = first.lock;
+        importedGlobalLinks = first.globalLinks;
+        firstPeopleLine     = 1;
+      }
+      importedPeople = [];
+      for(let i = firstPeopleLine; i < lines.length; i++){
+        importedPeople.push(JSON.parse(lines[i]));
+      }
+    } else {
+      // ── Classic JSON format ──
+      const data = JSON.parse(text);
+      if(!data.people || !Array.isArray(data.people)){ alert('Neplatný soubor zálohy.'); return; }
+      importedPeople      = data.people;
+      importedSettings    = data.settings;
+      importedLock        = data.lock;
+      importedGlobalLinks = data.globalLinks;
     }
-    const count = data.people.length;
+
+    const count = importedPeople.length;
     if(!confirm(`Import přepíše ${people.length} stávajících záznamů a načte ${count} ze zálohy.\nPokračovat?`)) return;
-    people = data.people;
+
+    people = importedPeople;
     await saveData();
-    if(data.settings){
-      appSettings = {...appSettings, ...data.settings};
+
+    if(importedSettings){
+      appSettings = {...appSettings, ...importedSettings};
       try { localStorage.setItem(SETTINGS_KEY, JSON.stringify(appSettings)); } catch {}
       applySettings();
     }
-    if(data.lock){
-      lockState = { pin: data.lock.pin||null };
+    if(importedLock){
+      lockState = { pin: importedLock.pin||null };
       saveLockState();
       updateSecurityUI();
     }
-    if(data.globalLinks && Array.isArray(data.globalLinks)){
-      globalLinks = data.globalLinks;
+    if(importedGlobalLinks && Array.isArray(importedGlobalLinks)){
+      globalLinks = importedGlobalLinks;
       await saveGlobalLinks();
       renderGlobalLinks();
     }
