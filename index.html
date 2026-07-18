@@ -3580,15 +3580,19 @@ async function _triggerDownload(blob, filename, pickerOpts, toastMsg){
 
 async function exportData(){
   try {
-    const allData = {
-      version: 1,
-      exported: new Date().toISOString(),
-      people: people,
-      settings: appSettings,
-      lock: { pin: lockState.pin },
-      globalLinks: globalLinks
-    };
-    const blob = new Blob([JSON.stringify(allData, null, 2)], {type:'application/json'});
+    // Build the JSON as an array of chunks instead of one giant string —
+    // with many embedded base64 photos, a single JSON.stringify() call on
+    // everything at once can exceed the JS engine's max string length
+    // ("Invalid string length"). Blob accepts an array of parts and
+    // concatenates them itself, so no single JS string needs to hold it all.
+    const parts = [];
+    parts.push('{\n  "version": 1,\n  "exported": ' + JSON.stringify(new Date().toISOString()) + ',\n  "people": [\n');
+    for(let i=0;i<people.length;i++){
+      parts.push(JSON.stringify(people[i]));
+      parts.push(i < people.length-1 ? ',\n' : '\n');
+    }
+    parts.push('  ],\n  "settings": ' + JSON.stringify(appSettings) + ',\n  "lock": ' + JSON.stringify({pin: lockState.pin}) + ',\n  "globalLinks": ' + JSON.stringify(globalLinks) + '\n}');
+    const blob = new Blob(parts, {type:'application/json'});
     const ds = new Date().toISOString().slice(0,10);
     await _triggerDownload(
       blob,
@@ -3610,10 +3614,12 @@ async function exportDataJsonl(){
       lock: { pin: lockState.pin },
       globalLinks: globalLinks
     };
-    const lines = [JSON.stringify(meta)];
-    // Lines 1…N: one person per line
-    for(const p of people) lines.push(JSON.stringify(p));
-    const blob = new Blob([lines.join('\n')], {type:'application/x-ndjson'});
+    // Same reasoning as exportData(): avoid joining everything into one
+    // giant JS string (fails with "Invalid string length" once photos add
+    // up). Pass the parts straight to Blob instead.
+    const parts = [JSON.stringify(meta)];
+    for(const p of people){ parts.push('\n'); parts.push(JSON.stringify(p)); }
+    const blob = new Blob(parts, {type:'application/x-ndjson'});
     const ds = new Date().toISOString().slice(0,10);
     await _triggerDownload(
       blob,
