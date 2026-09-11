@@ -3558,104 +3558,76 @@ function showSearchEngineSheet(query){
 
 // ── EXPORT / IMPORT DATA ──
 
-// Helper: Serialize people array into Blob parts asynchronously (non-blocking chunks)
-async function _buildJsonlBlob(){
-  const meta = {
-    _type:'meta', version:1, exported:new Date().toISOString(),
-    settings:appSettings, lock:{pin:lockState.pin}, globalLinks
-  };
-  const parts = [JSON.stringify(meta) + '\n'];
-  for(let i = 0; i < people.length; i++){
-    parts.push(JSON.stringify(people[i]) + '\n');
-    if(i % 200 === 199) await new Promise(r => setTimeout(r, 0)); // yield každých 200
-  }
-  return new Blob(parts, {type:'application/x-ndjson'});
-}
-
-async function _buildJsonBlob(){
-  const header = {version:1, exported:new Date().toISOString(), settings:appSettings, lock:{pin:lockState.pin}, globalLinks};
-  const hStr = JSON.stringify(header);
-  // Otevřeme pole "people" přímo za header objektem
-  const parts = [hStr.slice(0, -1) + ',"people":['];
-  for(let i = 0; i < people.length; i++){
-    if(i > 0) parts.push(',');
-    parts.push(JSON.stringify(people[i]));
-    if(i % 200 === 199) await new Promise(r => setTimeout(r, 0)); // yield každých 200
-  }
-  parts.push(']}');
-  return new Blob(parts, {type:'application/json'});
-}
-
-// Trigger download from a blob.
-// createBlob: async function that builds and returns the Blob.
-// showSaveFilePicker is called FIRST (before any awaited work) to preserve user-gesture activation.
-async function _triggerDownload(createBlob, filename, pickerOpts, toastMsg){
-  // ── File System Access API (Chrome desktop/Android) ──
+// Shared helper — trigger download from Blob
+async function _triggerDownload(blob, filename, pickerOpts, toastMsg){
   if(window.showSaveFilePicker){
     try {
-      // Must be called immediately — before any async data work — to keep user activation
       const fh = await window.showSaveFilePicker({ suggestedName: filename, types: [pickerOpts] });
-      showToast('⏳ Serializuji data…', 0);
-      const blob = await createBlob();
       const writable = await fh.createWritable();
       await writable.write(blob);
       await writable.close();
-      showToast(toastMsg, 3000);
+      showToast(toastMsg, 2500);
       return;
-    } catch(e){
-      if(e.name === 'AbortError') return; // user cancelled picker
-      // Non-abort error (e.g. activation expired) → fall through to URL fallback
+    } catch(e) {
+      if(e.name === 'AbortError') return;
     }
   }
-
-  // ── URL-based fallback ──
-  showToast('⏳ Serializuji data…', 0);
-  let blob;
-  try { blob = await createBlob(); }
-  catch(e){ showToast('❌ Export selhal: ' + e.message, 4000); return; }
-
   const url = URL.createObjectURL(blob);
-  const isIOS = /iP(ad|hone|od)/.test(navigator.userAgent);
-
-  if(isIOS){
-    // iOS Safari ignores a.download — open blob in new tab, user saves via Share sheet
-    const win = window.open(url, '_blank');
-    if(win){
-      showToast(toastMsg + ' — ulož přes Sdílet ↑', 5000);
-    } else {
-      // Popup blocked — show a tappable link
-      showToast('⚠️ Povol pop-upy a zkus znovu', 4000);
-    }
-    setTimeout(() => URL.revokeObjectURL(url), 60000);
-  } else {
-    const a = document.createElement('a');
-    a.href = url; a.download = filename;
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
-    showToast(toastMsg, 3000);
-    setTimeout(() => URL.revokeObjectURL(url), 10000);
-  }
+  const a = document.createElement('a');
+  a.href = url; a.download = filename; a.click();
+  URL.revokeObjectURL(url);
 }
 
 async function exportData(){
-  const ds = new Date().toISOString().slice(0,10);
-  await _triggerDownload(
-    _buildJsonBlob,
-    `osobnosti-zaloha-${ds}.json`,
-    { description: 'JSON záloha', accept: {'application/json': ['.json']} },
-    '✓ Export JSON uložen'
-  );
+  try {
+    // Build the JSON as an array of chunks instead of one giant string —
+    // with many embedded base64 photos, a single JSON.stringify() call on
+    // everything at once can exceed the JS engine's max string length
+    // ("Invalid string length"). Blob accepts an array of parts and
+    // concatenates them itself, so no single JS string needs to hold it all.
+    const parts = [];
+    parts.push('{\n  "version": 1,\n  "exported": ' + JSON.stringify(new Date().toISOString()) + ',\n  "people": [\n');
+    for(let i=0;i<people.length;i++){
+      parts.push(JSON.stringify(people[i]));
+      parts.push(i < people.length-1 ? ',\n' : '\n');
+    }
+    parts.push('  ],\n  "settings": ' + JSON.stringify(appSettings) + ',\n  "lock": ' + JSON.stringify({pin: lockState.pin}) + ',\n  "globalLinks": ' + JSON.stringify(globalLinks) + '\n}');
+    const blob = new Blob(parts, {type:'application/json'});
+    const ds = new Date().toISOString().slice(0,10);
+    await _triggerDownload(
+      blob,
+      `osobnosti-zaloha-${ds}.json`,
+      { description: 'JSON záloha', accept: {'application/json': ['.json']} },
+      '✓ Export JSON uložen'
+    );
+  } catch(e) { alert('Export selhal: '+e.message); }
 }
 
 async function exportDataJsonl(){
-  const ds = new Date().toISOString().slice(0,10);
-  await _triggerDownload(
-    _buildJsonlBlob,
-    `osobnosti-zaloha-${ds}.jsonl`,
-    { description: 'JSONL záloha', accept: {'application/x-ndjson': ['.jsonl']} },
-    '✓ Export JSONL uložen'
-  );
+  try {
+    // Line 0: metadata (settings, lock, globalLinks)
+    const meta = {
+      _type: 'meta',
+      version: 1,
+      exported: new Date().toISOString(),
+      settings: appSettings,
+      lock: { pin: lockState.pin },
+      globalLinks: globalLinks
+    };
+    // Same reasoning as exportData(): avoid joining everything into one
+    // giant JS string (fails with "Invalid string length" once photos add
+    // up). Pass the parts straight to Blob instead.
+    const parts = [JSON.stringify(meta)];
+    for(const p of people){ parts.push('\n'); parts.push(JSON.stringify(p)); }
+    const blob = new Blob(parts, {type:'application/x-ndjson'});
+    const ds = new Date().toISOString().slice(0,10);
+    await _triggerDownload(
+      blob,
+      `osobnosti-zaloha-${ds}.jsonl`,
+      { description: 'JSONL záloha', accept: {'application/x-ndjson': ['.jsonl']} },
+      '✓ Export JSONL uložen'
+    );
+  } catch(e) { alert('Export selhal: '+e.message); }
 }
 
 async function importData(event){
@@ -3663,7 +3635,6 @@ async function importData(event){
   event.target.value='';
   if(!file) return;
   try {
-    showToast('⏳ Čtu soubor…', 0);
     const text = await file.text();
     const isJsonl = file.name.toLowerCase().endsWith('.jsonl');
 
@@ -3671,49 +3642,35 @@ async function importData(event){
 
     if(isJsonl){
       // ── JSONL format ──
-      showToast('⏳ Parsování JSONL…', 0);
-      await new Promise(r => setTimeout(r, 30));
-      const lines = text.split('\n');
-      if(!lines.length){ showToast(''); alert('Soubor je prázdný.'); return; }
+      // Line 0 = meta object, lines 1…N = person objects
+      const lines = text.split('\n').map(l=>l.trim()).filter(Boolean);
+      if(!lines.length){ alert('Soubor je prázdný.'); return; }
       let firstPeopleLine = 0;
-      const firstLine = lines[0].trim();
-      if(firstLine){
-        const first = JSON.parse(firstLine);
-        if(first._type === 'meta'){
-          importedSettings    = first.settings;
-          importedLock        = first.lock;
-          importedGlobalLinks = first.globalLinks;
-          firstPeopleLine     = 1;
-        }
+      const first = JSON.parse(lines[0]);
+      if(first._type === 'meta'){
+        importedSettings    = first.settings;
+        importedLock        = first.lock;
+        importedGlobalLinks = first.globalLinks;
+        firstPeopleLine     = 1;
       }
       importedPeople = [];
-      const CHUNK = 500;
       for(let i = firstPeopleLine; i < lines.length; i++){
-        const l = lines[i].trim();
-        if(l) importedPeople.push(JSON.parse(l));
-        if(i % CHUNK === CHUNK - 1){
-          showToast(`⏳ Parsování… ${importedPeople.length.toLocaleString('cs')} záznamů`, 0);
-          await new Promise(r => setTimeout(r, 0));
-        }
+        importedPeople.push(JSON.parse(lines[i]));
       }
     } else {
       // ── Classic JSON format ──
-      showToast('⏳ Parsování JSON…', 0);
-      await new Promise(r => setTimeout(r, 30));
       const data = JSON.parse(text);
-      if(!data.people || !Array.isArray(data.people)){ showToast(''); alert('Neplatný soubor zálohy.'); return; }
+      if(!data.people || !Array.isArray(data.people)){ alert('Neplatný soubor zálohy.'); return; }
       importedPeople      = data.people;
       importedSettings    = data.settings;
       importedLock        = data.lock;
       importedGlobalLinks = data.globalLinks;
     }
 
-    showToast('');
     const count = importedPeople.length;
     if(!confirm(`Import přepíše ${people.length} stávajících záznamů a načte ${count} ze zálohy.\nPokračovat?`)) return;
 
     people = importedPeople;
-    showToast('⏳ Ukládám do databáze…', 0);
     await saveData();
 
     if(importedSettings){
@@ -3733,9 +3690,8 @@ async function importData(event){
     }
     renderList();
     showView('list');
-    showToast(`✓ Importováno ${count.toLocaleString('cs')} záznamů`, 4000);
+    alert(`✓ Importováno ${count} záznamů.`);
   } catch(e) {
-    showToast('');
     alert('Import selhal: '+e.message);
   }
 }
