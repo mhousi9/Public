@@ -3565,25 +3565,22 @@ async function _buildJsonlBlob(){
     settings:appSettings, lock:{pin:lockState.pin}, globalLinks
   };
   const parts = [JSON.stringify(meta) + '\n'];
-  const CHUNK = 500;
-  for(let i = 0; i < people.length; i += CHUNK){
-    parts.push(people.slice(i, i + CHUNK).map(p => JSON.stringify(p)).join('\n') + '\n');
-    if(i + CHUNK < people.length) await new Promise(r => setTimeout(r, 0)); // yield
+  for(let i = 0; i < people.length; i++){
+    parts.push(JSON.stringify(people[i]) + '\n');
+    if(i % 200 === 199) await new Promise(r => setTimeout(r, 0)); // yield každých 200
   }
   return new Blob(parts, {type:'application/x-ndjson'});
 }
 
 async function _buildJsonBlob(){
-  // Build JSON structure incrementally — avoids one massive string in memory
   const header = {version:1, exported:new Date().toISOString(), settings:appSettings, lock:{pin:lockState.pin}, globalLinks};
   const hStr = JSON.stringify(header);
-  // Remove trailing } and open people array
+  // Otevřeme pole "people" přímo za header objektem
   const parts = [hStr.slice(0, -1) + ',"people":['];
-  const CHUNK = 500;
-  for(let i = 0; i < people.length; i += CHUNK){
+  for(let i = 0; i < people.length; i++){
     if(i > 0) parts.push(',');
-    parts.push(people.slice(i, i + CHUNK).map(p => JSON.stringify(p)).join(','));
-    if(i + CHUNK < people.length) await new Promise(r => setTimeout(r, 0)); // yield
+    parts.push(JSON.stringify(people[i]));
+    if(i % 200 === 199) await new Promise(r => setTimeout(r, 0)); // yield každých 200
   }
   parts.push(']}');
   return new Blob(parts, {type:'application/json'});
