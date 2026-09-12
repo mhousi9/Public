@@ -891,11 +891,12 @@ input:checked + .toggle-slider:before { transform: translateX(22px); background:
     <!-- Data export/import -->
     <div class="settings-section-title">💾 Záloha a přenos dat</div>
     <div class="info-card" style="margin-bottom:8px">
-      <div style="font-size:13px;color:#64748b;margin-bottom:10px">Exportuj všechna data do souboru. Soubor lze načíst na jiném zařízení (PC, tablet…) — stačí otevřít aplikaci a importovat.</div>
+      <div style="font-size:13px;color:#64748b;margin-bottom:12px">
+        Záloha vytvoří složku se dvěma soubory: <b>data.json</b> (metadata) a <b>fotky.json</b> (vložené fotky). Při obnově vyber tu samou složku.
+      </div>
       <div style="display:flex;gap:8px;flex-wrap:wrap">
-        <button class="btn btn-secondary" style="flex:1;min-width:100px;justify-content:center" onclick="exportData()">⬇ JSON</button>
-        <button class="btn btn-secondary" style="flex:1;min-width:100px;justify-content:center" onclick="exportDataJsonl()">⬇ JSONL</button>
-        <label class="btn btn-ghost" style="flex:1;min-width:120px;justify-content:center;cursor:pointer">⬆ Import<input type="file" accept=".json,.jsonl" style="display:none" onchange="importData(event)"></label>
+        <button class="btn btn-secondary" style="flex:1;justify-content:center" onclick="exportAll()">⬇ Záloha</button>
+        <button class="btn btn-ghost" style="flex:1;justify-content:center" onclick="importAll()">⬆ Obnovit zálohu</button>
       </div>
     </div>
 
@@ -3558,164 +3559,151 @@ function showSearchEngineSheet(query){
 
 // ── EXPORT / IMPORT DATA ──
 
-// Vrátí kopii profilu bez base64 fotek — URL fotky zachová
+// Vrátí kopii profilu bez base64 fotek (zachová URL fotky)
 function _personForExport(p){
   if(!p.photos || !p.photos.length) return p;
   const photos = p.photos.filter(ph => ph.src && !ph.src.startsWith('data:'));
   return photos.length === p.photos.length ? p : Object.assign({}, p, {photos});
 }
 
-// Sestaví export Blob — max ~15 stringových chunků místo 13 000 položek v poli
-// (Chrome Android havaruje při new Blob() s tisíci malými položkami)
-async function _buildExportBlob(isJsonl){
-  const CHUNK = 1000; // profilů na jeden string chunk
-  const parts = [];   // max ~15 chunks celkem
+// Zapíše metadata (bez base64 fotek) do writable streamu
+async function _streamJson(writable){
+  const header = {version:1, exported:new Date().toISOString(), settings:appSettings, lock:{pin:lockState.pin}, globalLinks};
+  await writable.write(JSON.stringify(header).slice(0,-1) + ',"people":[');
+  for(let i = 0; i < people.length; i++){
+    if(i > 0) await writable.write(',');
+    await writable.write(JSON.stringify(_personForExport(people[i])));
+    if(i % 100 === 99) await new Promise(r => setTimeout(r, 0));
+  }
+  await writable.write(']}');
+}
 
-  if(isJsonl){
-    const meta = {
-      _type:'meta', version:1, exported:new Date().toISOString(),
-      settings:appSettings, lock:{pin:lockState.pin}, globalLinks
-    };
-    let buf = JSON.stringify(meta) + '\n';
-    for(let i = 0; i < people.length; i++){
-      buf += JSON.stringify(_personForExport(people[i])) + '\n';
-      if((i + 1) % CHUNK === 0 || i === people.length - 1){
-        parts.push(buf); buf = '';
-        await new Promise(r => setTimeout(r, 0));
-      }
+// Zapíše base64 fotky do writable streamu (jedna osoba = jeden write)
+async function _streamPhotos(writable){
+  const hdr = {_type:'photos', version:1, exported:new Date().toISOString()};
+  await writable.write(JSON.stringify(hdr).slice(0,-1) + ',"people":[');
+  let first = true;
+  for(let i = 0; i < people.length; i++){
+    const b64 = (people[i].photos||[]).filter(ph => ph.src && ph.src.startsWith('data:'));
+    if(!b64.length) continue;
+    await writable.write((first ? '' : ',') + JSON.stringify({id: people[i].id, photos: b64}));
+    first = false;
+    if(i % 50 === 49){
+      showToast(`⏳ Fotky: ${i+1} / ${people.length}…`, 0);
+      await new Promise(r => setTimeout(r, 0));
     }
-    return new Blob(parts, {type:'application/x-ndjson'});
-  } else {
-    const header = {
-      version:1, exported:new Date().toISOString(),
-      settings:appSettings, lock:{pin:lockState.pin}, globalLinks
-    };
-    let buf = JSON.stringify(header).slice(0,-1) + ',"people":[';
-    for(let i = 0; i < people.length; i++){
-      if(i > 0) buf += ',';
-      buf += JSON.stringify(_personForExport(people[i]));
-      if((i + 1) % CHUNK === 0 || i === people.length - 1){
-        parts.push(buf); buf = '';
-        await new Promise(r => setTimeout(r, 0));
-      }
-    }
-    parts.push(']}');
-    return new Blob(parts, {type:'application/json'});
+  }
+  await writable.write(']}');
+}
+
+// ── exportAll / importAll ──
+// Používají showDirectoryPicker — Chrome se zeptá na složku,
+// app tam vytvoří / přečte data.json + fotky.json
+
+async function exportAll(){
+  if(!window.showDirectoryPicker){
+    showToast('❌ Vyžaduje Chrome 86+ na Androidu nebo desktopu', 4000); return;
+  }
+  try {
+    const ds = new Date().toISOString().slice(0,10);
+    showToast('⏳ Vyber kam uložit zálohu…', 0);
+
+    // Uživatel vybere rodičovskou složku (např. Stahování)
+    const parent = await window.showDirectoryPicker({mode: 'readwrite', startIn: 'downloads'});
+    const folderName = `osobnosti-zaloha-${ds}`;
+    const dir = await parent.getDirectoryHandle(folderName, {create: true});
+
+    // 1. data.json — metadata bez base64 fotek (malý soubor)
+    showToast('⏳ Ukládám data.json…', 0);
+    const dataW = await (await dir.getFileHandle('data.json', {create: true})).createWritable();
+    try {
+      await _streamJson(dataW);
+      await dataW.close();
+    } catch(e) { try { await dataW.abort(); } catch {} throw e; }
+
+    // 2. fotky.json — base64 fotky streamované po jednom profilu (nikdy v paměti celé)
+    showToast('⏳ Ukládám fotky.json…', 0);
+    const fotkW = await (await dir.getFileHandle('fotky.json', {create: true})).createWritable();
+    try {
+      await _streamPhotos(fotkW);
+      await fotkW.close();
+    } catch(e) { try { await fotkW.abort(); } catch {} throw e; }
+
+    showToast(`✓ Záloha uložena do složky "${folderName}"`, 5000);
+  } catch(e) {
+    if(e.name === 'AbortError') return;
+    showToast('❌ Export selhal: ' + (e.message || e), 4000);
   }
 }
 
-// Stáhne Blob — bez showSaveFilePicker (způsoboval crash na Android Chrome)
-function _downloadBlob(blob, filename, toastMsg){
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement('a');
-  a.href = url; a.download = filename;
-  document.body.appendChild(a); a.click(); document.body.removeChild(a);
-  showToast(toastMsg, 5000);
-  setTimeout(() => URL.revokeObjectURL(url), 30000);
-}
-
-async function exportData(){
-  showToast('⏳ Připravuji zálohu…', 0);
-  await new Promise(r => setTimeout(r, 30));
+async function importAll(){
+  if(!window.showDirectoryPicker){
+    showToast('❌ Vyžaduje Chrome 86+ na Androidu nebo desktopu', 4000); return;
+  }
   try {
-    const blob = await _buildExportBlob(false);
-    const ds = new Date().toISOString().slice(0,10);
-    showToast('');
-    _downloadBlob(blob, `osobnosti-zaloha-${ds}.json`,
-      '✓ Záloha uložena do Stahování (vložené fotky vynechány)');
-  } catch(e){ showToast('❌ Export selhal: '+(e.message||e), 4000); }
-}
+    const dir = await window.showDirectoryPicker({mode: 'read'});
 
-async function exportDataJsonl(){
-  showToast('⏳ Připravuji zálohu…', 0);
-  await new Promise(r => setTimeout(r, 30));
-  try {
-    const blob = await _buildExportBlob(true);
-    const ds = new Date().toISOString().slice(0,10);
-    showToast('');
-    _downloadBlob(blob, `osobnosti-zaloha-${ds}.jsonl`,
-      '✓ Záloha JSONL uložena do Stahování (vložené fotky vynechány)');
-  } catch(e){ showToast('❌ Export selhal: '+(e.message||e), 4000); }
-}
-async function importData(event){
-  const file = event.target.files && event.target.files[0];
-  event.target.value='';
-  if(!file) return;
-  try {
-    showToast('⏳ Čtu soubor…', 0);
-    const text = await file.text();
-    const isJsonl = file.name.toLowerCase().endsWith('.jsonl');
+    // Přečti data.json
+    let dataFile;
+    try { dataFile = await (await dir.getFileHandle('data.json')).getFile(); }
+    catch(e) { showToast('❌ Soubor data.json ve složce nenalezen', 4000); return; }
 
-    let importedPeople, importedSettings, importedLock, importedGlobalLinks;
-
-    if(isJsonl){
-      // ── JSONL format ──
-      showToast('⏳ Parsování JSONL…', 0);
-      await new Promise(r => setTimeout(r, 30));
-      const lines = text.split('\n');
-      if(!lines.length){ showToast(''); alert('Soubor je prázdný.'); return; }
-      let firstPeopleLine = 0;
-      const firstLine = lines[0].trim();
-      if(firstLine){
-        const first = JSON.parse(firstLine);
-        if(first._type === 'meta'){
-          importedSettings    = first.settings;
-          importedLock        = first.lock;
-          importedGlobalLinks = first.globalLinks;
-          firstPeopleLine     = 1;
-        }
-      }
-      importedPeople = [];
-      const CHUNK = 500;
-      for(let i = firstPeopleLine; i < lines.length; i++){
-        const l = lines[i].trim();
-        if(l) importedPeople.push(JSON.parse(l));
-        if(i % CHUNK === CHUNK - 1){
-          showToast(`⏳ Parsování… ${importedPeople.length.toLocaleString('cs')} záznamů`, 0);
-          await new Promise(r => setTimeout(r, 0));
-        }
-      }
-    } else {
-      // ── Classic JSON format ──
-      showToast('⏳ Parsování JSON…', 0);
-      await new Promise(r => setTimeout(r, 30));
-      const data = JSON.parse(text);
-      if(!data.people || !Array.isArray(data.people)){ showToast(''); alert('Neplatný soubor zálohy.'); return; }
-      importedPeople      = data.people;
-      importedSettings    = data.settings;
-      importedLock        = data.lock;
-      importedGlobalLinks = data.globalLinks;
+    showToast('⏳ Čtu data.json…', 0);
+    await new Promise(r => setTimeout(r, 30));
+    const data = JSON.parse(await dataFile.text());
+    if(!data.people || !Array.isArray(data.people)){
+      showToast('❌ Neplatný soubor data.json', 3000); return;
     }
 
+    const count = data.people.length;
     showToast('');
-    const count = importedPeople.length;
-    if(!confirm(`Import přepíše ${people.length} stávajících záznamů a načte ${count} ze zálohy.\nPokračovat?`)) return;
+    if(!confirm(`Import přepíše ${people.length} stávajících záznamů
+a načte ${count} ze zálohy.
+Pokračovat?`)) return;
 
-    people = importedPeople;
+    people = data.people;
+
+    // Přidej fotky z fotky.json (volitelné)
+    try {
+      const fotkFile = await (await dir.getFileHandle('fotky.json')).getFile();
+      showToast('⏳ Nahrávám fotky.json…', 0);
+      await new Promise(r => setTimeout(r, 30));
+      const fotkData = JSON.parse(await fotkFile.text());
+      let updated = 0;
+      for(const entry of (fotkData.people || [])){
+        const person = people.find(p => p.id === entry.id);
+        if(!person) continue;
+        const existing = new Set((person.photos || []).map(ph => ph.src));
+        const toAdd = (entry.photos || []).filter(ph => !existing.has(ph.src));
+        if(toAdd.length){ person.photos = [...(person.photos || []), ...toAdd]; updated++; }
+      }
+      showToast(`⏳ Fotky: ${updated} profilů aktualizováno…`, 0);
+    } catch(e) {
+      if(e.name !== 'NotFoundError') console.warn('fotky.json:', e.message);
+      // fotky.json je volitelný — pokračujeme bez fotek
+    }
+
     showToast('⏳ Ukládám do databáze…', 0);
     await saveData();
 
-    if(importedSettings){
-      appSettings = {...appSettings, ...importedSettings};
+    if(data.settings){
+      appSettings = {...appSettings, ...data.settings};
       try { localStorage.setItem(SETTINGS_KEY, JSON.stringify(appSettings)); } catch {}
       applySettings();
     }
-    if(importedLock){
-      lockState = { pin: importedLock.pin||null };
-      saveLockState();
-      updateSecurityUI();
-    }
-    if(importedGlobalLinks && Array.isArray(importedGlobalLinks)){
-      globalLinks = importedGlobalLinks;
+    if(data.lock){ lockState = {pin: data.lock.pin || null}; saveLockState(); updateSecurityUI(); }
+    if(data.globalLinks && Array.isArray(data.globalLinks)){
+      globalLinks = data.globalLinks;
       await saveGlobalLinks();
       renderGlobalLinks();
     }
+
     renderList();
     showView('list');
-    showToast(`✓ Importováno ${count.toLocaleString('cs')} záznamů`, 4000);
+    showToast(`✓ Záloha obnovena — ${count.toLocaleString('cs')} profilů`, 4000);
   } catch(e) {
-    showToast('');
-    alert('Import selhal: '+e.message);
+    if(e.name === 'AbortError') return;
+    showToast('❌ Import selhal: ' + (e.message || e), 4000);
   }
 }
 
