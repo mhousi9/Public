@@ -3558,83 +3558,91 @@ function showSearchEngineSheet(query){
 
 // ── EXPORT / IMPORT DATA ──
 
-// Shared helper — trigger download from Blob
-async function _triggerDownload(blob, filename, pickerOpts, toastMsg){
-  if(window.showSaveFilePicker){
-    try {
-      const fh = await window.showSaveFilePicker({ suggestedName: filename, types: [pickerOpts] });
-      const writable = await fh.createWritable();
-      await writable.write(blob);
-      await writable.close();
-      showToast(toastMsg, 2500);
-      return;
-    } catch(e) {
-      if(e.name === 'AbortError') return;
+// Vrátí kopii profilu bez base64 fotek — URL fotky zachová
+function _personForExport(p){
+  if(!p.photos || !p.photos.length) return p;
+  const photos = p.photos.filter(ph => ph.src && !ph.src.startsWith('data:'));
+  return photos.length === p.photos.length ? p : Object.assign({}, p, {photos});
+}
+
+// Sestaví export Blob — max ~15 stringových chunků místo 13 000 položek v poli
+// (Chrome Android havaruje při new Blob() s tisíci malými položkami)
+async function _buildExportBlob(isJsonl){
+  const CHUNK = 1000; // profilů na jeden string chunk
+  const parts = [];   // max ~15 chunks celkem
+
+  if(isJsonl){
+    const meta = {
+      _type:'meta', version:1, exported:new Date().toISOString(),
+      settings:appSettings, lock:{pin:lockState.pin}, globalLinks
+    };
+    let buf = JSON.stringify(meta) + '\n';
+    for(let i = 0; i < people.length; i++){
+      buf += JSON.stringify(_personForExport(people[i])) + '\n';
+      if((i + 1) % CHUNK === 0 || i === people.length - 1){
+        parts.push(buf); buf = '';
+        await new Promise(r => setTimeout(r, 0));
+      }
     }
+    return new Blob(parts, {type:'application/x-ndjson'});
+  } else {
+    const header = {
+      version:1, exported:new Date().toISOString(),
+      settings:appSettings, lock:{pin:lockState.pin}, globalLinks
+    };
+    let buf = JSON.stringify(header).slice(0,-1) + ',"people":[';
+    for(let i = 0; i < people.length; i++){
+      if(i > 0) buf += ',';
+      buf += JSON.stringify(_personForExport(people[i]));
+      if((i + 1) % CHUNK === 0 || i === people.length - 1){
+        parts.push(buf); buf = '';
+        await new Promise(r => setTimeout(r, 0));
+      }
+    }
+    parts.push(']}');
+    return new Blob(parts, {type:'application/json'});
   }
+}
+
+// Stáhne Blob — bez showSaveFilePicker (způsoboval crash na Android Chrome)
+function _downloadBlob(blob, filename, toastMsg){
   const url = URL.createObjectURL(blob);
   const a = document.createElement('a');
-  a.href = url; a.download = filename; a.click();
-  URL.revokeObjectURL(url);
+  a.href = url; a.download = filename;
+  document.body.appendChild(a); a.click(); document.body.removeChild(a);
+  showToast(toastMsg, 5000);
+  setTimeout(() => URL.revokeObjectURL(url), 30000);
 }
 
 async function exportData(){
+  showToast('⏳ Připravuji zálohu…', 0);
+  await new Promise(r => setTimeout(r, 30));
   try {
-    // Build the JSON as an array of chunks instead of one giant string —
-    // with many embedded base64 photos, a single JSON.stringify() call on
-    // everything at once can exceed the JS engine's max string length
-    // ("Invalid string length"). Blob accepts an array of parts and
-    // concatenates them itself, so no single JS string needs to hold it all.
-    const parts = [];
-    parts.push('{\n  "version": 1,\n  "exported": ' + JSON.stringify(new Date().toISOString()) + ',\n  "people": [\n');
-    for(let i=0;i<people.length;i++){
-      parts.push(JSON.stringify(people[i]));
-      parts.push(i < people.length-1 ? ',\n' : '\n');
-    }
-    parts.push('  ],\n  "settings": ' + JSON.stringify(appSettings) + ',\n  "lock": ' + JSON.stringify({pin: lockState.pin}) + ',\n  "globalLinks": ' + JSON.stringify(globalLinks) + '\n}');
-    const blob = new Blob(parts, {type:'application/json'});
+    const blob = await _buildExportBlob(false);
     const ds = new Date().toISOString().slice(0,10);
-    await _triggerDownload(
-      blob,
-      `osobnosti-zaloha-${ds}.json`,
-      { description: 'JSON záloha', accept: {'application/json': ['.json']} },
-      '✓ Export JSON uložen'
-    );
-  } catch(e) { alert('Export selhal: '+e.message); }
+    showToast('');
+    _downloadBlob(blob, `osobnosti-zaloha-${ds}.json`,
+      '✓ Záloha uložena do Stahování (vložené fotky vynechány)');
+  } catch(e){ showToast('❌ Export selhal: '+(e.message||e), 4000); }
 }
 
 async function exportDataJsonl(){
+  showToast('⏳ Připravuji zálohu…', 0);
+  await new Promise(r => setTimeout(r, 30));
   try {
-    // Line 0: metadata (settings, lock, globalLinks)
-    const meta = {
-      _type: 'meta',
-      version: 1,
-      exported: new Date().toISOString(),
-      settings: appSettings,
-      lock: { pin: lockState.pin },
-      globalLinks: globalLinks
-    };
-    // Same reasoning as exportData(): avoid joining everything into one
-    // giant JS string (fails with "Invalid string length" once photos add
-    // up). Pass the parts straight to Blob instead.
-    const parts = [JSON.stringify(meta)];
-    for(const p of people){ parts.push('\n'); parts.push(JSON.stringify(p)); }
-    const blob = new Blob(parts, {type:'application/x-ndjson'});
+    const blob = await _buildExportBlob(true);
     const ds = new Date().toISOString().slice(0,10);
-    await _triggerDownload(
-      blob,
-      `osobnosti-zaloha-${ds}.jsonl`,
-      { description: 'JSONL záloha', accept: {'application/x-ndjson': ['.jsonl']} },
-      '✓ Export JSONL uložen'
-    );
-  } catch(e) { alert('Export selhal: '+e.message); }
+    showToast('');
+    _downloadBlob(blob, `osobnosti-zaloha-${ds}.jsonl`,
+      '✓ Záloha JSONL uložena do Stahování (vložené fotky vynechány)');
+  } catch(e){ showToast('❌ Export selhal: '+(e.message||e), 4000); }
 }
-
 async function importData(event){
   const file = event.target.files && event.target.files[0];
   event.target.value='';
   if(!file) return;
   try {
+    showToast('⏳ Čtu soubor…', 0);
     const text = await file.text();
     const isJsonl = file.name.toLowerCase().endsWith('.jsonl');
 
@@ -3642,35 +3650,49 @@ async function importData(event){
 
     if(isJsonl){
       // ── JSONL format ──
-      // Line 0 = meta object, lines 1…N = person objects
-      const lines = text.split('\n').map(l=>l.trim()).filter(Boolean);
-      if(!lines.length){ alert('Soubor je prázdný.'); return; }
+      showToast('⏳ Parsování JSONL…', 0);
+      await new Promise(r => setTimeout(r, 30));
+      const lines = text.split('\n');
+      if(!lines.length){ showToast(''); alert('Soubor je prázdný.'); return; }
       let firstPeopleLine = 0;
-      const first = JSON.parse(lines[0]);
-      if(first._type === 'meta'){
-        importedSettings    = first.settings;
-        importedLock        = first.lock;
-        importedGlobalLinks = first.globalLinks;
-        firstPeopleLine     = 1;
+      const firstLine = lines[0].trim();
+      if(firstLine){
+        const first = JSON.parse(firstLine);
+        if(first._type === 'meta'){
+          importedSettings    = first.settings;
+          importedLock        = first.lock;
+          importedGlobalLinks = first.globalLinks;
+          firstPeopleLine     = 1;
+        }
       }
       importedPeople = [];
+      const CHUNK = 500;
       for(let i = firstPeopleLine; i < lines.length; i++){
-        importedPeople.push(JSON.parse(lines[i]));
+        const l = lines[i].trim();
+        if(l) importedPeople.push(JSON.parse(l));
+        if(i % CHUNK === CHUNK - 1){
+          showToast(`⏳ Parsování… ${importedPeople.length.toLocaleString('cs')} záznamů`, 0);
+          await new Promise(r => setTimeout(r, 0));
+        }
       }
     } else {
       // ── Classic JSON format ──
+      showToast('⏳ Parsování JSON…', 0);
+      await new Promise(r => setTimeout(r, 30));
       const data = JSON.parse(text);
-      if(!data.people || !Array.isArray(data.people)){ alert('Neplatný soubor zálohy.'); return; }
+      if(!data.people || !Array.isArray(data.people)){ showToast(''); alert('Neplatný soubor zálohy.'); return; }
       importedPeople      = data.people;
       importedSettings    = data.settings;
       importedLock        = data.lock;
       importedGlobalLinks = data.globalLinks;
     }
 
+    showToast('');
     const count = importedPeople.length;
     if(!confirm(`Import přepíše ${people.length} stávajících záznamů a načte ${count} ze zálohy.\nPokračovat?`)) return;
 
     people = importedPeople;
+    showToast('⏳ Ukládám do databáze…', 0);
     await saveData();
 
     if(importedSettings){
@@ -3690,8 +3712,9 @@ async function importData(event){
     }
     renderList();
     showView('list');
-    alert(`✓ Importováno ${count} záznamů.`);
+    showToast(`✓ Importováno ${count.toLocaleString('cs')} záznamů`, 4000);
   } catch(e) {
+    showToast('');
     alert('Import selhal: '+e.message);
   }
 }
